@@ -106,12 +106,7 @@ def enrich_source_documents(documents: list[Document]) -> list[Document]:
         document.metadata["file_mod_time"] = m_time.strftime("%Y-%m-%d %H:%M:%S")
         document.metadata["file_size"] = str(path.stat().st_size)
         document.metadata["file_sha1"] = hashlib.sha1(path.read_bytes()).hexdigest()
-        # Additional application-specific enrichment
-        document.metadata["godel_client"] = path.stem
-        document.page_content = (
-            f"This describes the work our company did for client "
-            f"{path.stem}. {document.page_content}"
-        )
+        # Additional application-specific enrichment, if needed
     return documents
 
 
