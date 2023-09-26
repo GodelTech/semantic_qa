@@ -1,0 +1,39 @@
+
+[docs]
+source_dirs = ["corpus"]
+glob = "**/[!.]*.*" # Every (non-hidden) doc with any extension
+
+[splitter]
+chunk_size = 1000
+chunk_overlap = 20
+
+[openai]
+api_key = "API-KEY"
+chat_model = "gpt-3.5-turbo" # Don't try to use "gpt-4" unless you've prepaid or are in the premium tier
+temperature = 0.7 # Between 0 and 1, governs the randomness (and thus the creativity) of the responses
+
+[chromadb]
+persistence_root_dir = "chroma_db"
+
+[redis]
+url = "redis://localhost:6379"
+
+[pgvector]
+connection_string = "postgresql+psycopg2://vector_user:vector_pass@localhost:5432/vectors"
+
+[pinecone]
+api_key = "API_KEY" # From pinecone.io
+environment = "ENVIRONMENT" # From pinecone.io
+
+[general]
+collection_name = "docs"
+default_device = "cuda" # use "cuda" if your machine has a suitable graphics card, "cpu" otherwise
+prompt_template = """You are an AI assistant that answers questions about our company's policy. 
+Use the following pieces of context to answer the question at the end.
+If you don't know the answer, just say that you don't know, don't try to make up an answer.
+Always say thank you at the end.
+
+{context}
+
+Question: {question}
+Helpful, extended answer:"""
