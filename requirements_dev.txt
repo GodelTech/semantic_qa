@@ -1,0 +1,5 @@
+black
+mypy
+pylint
+certifi
+pip_system_certs

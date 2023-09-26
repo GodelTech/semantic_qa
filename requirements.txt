@@ -1,0 +1,12 @@
+tomli
+langchain
+openai
+unstructured[all-docs]
+tqdm
+sentence-transformers
+InstructorEmbedding
+chromadb
+pinecone-client
+redis
+pgvector
+psycopg2-binary
