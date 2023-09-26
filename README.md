@@ -52,4 +52,10 @@ The demo currently supports:
  * Generating embeddings locally using torch and a pre-trained model downloaded from [Hugging Face](https://huggingface.co/models). The default model is ["all-MiniLM-L6-v2"](https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2)
  * Generating embeddings locally using torch and one of the pre-trained [Instructor](https://github.com/HKUNLP/instructor-embedding) models. The default used is ["hkunlp/instructor-large"](https://github.com/HKUNLP/instructor-embedding#model-list)
 
+## Running the demo
 
+```
+(venv) $> python semantic_qa.py
+```
+
+The first time it runs, leave REBUILD = True to ensure the script iterates over the files in the corpus and generates the embeddings. In successive runs, you can change REBUILD = False and just test different values of QUERY_STR or tweaks to the GPT prompt.
