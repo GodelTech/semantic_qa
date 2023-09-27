@@ -18,7 +18,7 @@ persistence_root_dir = "chroma_db"
 url = "redis://localhost:6379"
 
 [pgvector]
-connection_string = "postgresql+psycopg2://vector_user:vector_pass@localhost:5432/vectors"
+connection_string = "postgresql+psycopg2://vector_user:vector_pass@localhost:5432/vectors" # Don't write it here, put it in non-versioned secrets.toml
 
 [pinecone]
 api_key = "API_KEY" # From pinecone.io, don't write it here, put it in non-versioned secrets.toml
