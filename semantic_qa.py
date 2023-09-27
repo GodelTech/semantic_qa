@@ -41,7 +41,7 @@ from langchain.chains import RetrievalQA
 
 from pymongo.collection import Collection as MongodbCollection
 
-from pydantic.utils import deep_update
+from pydantic.utils import deep_update # pylint: disable=no-name-in-module
 
 if sys.version_info >= (3, 11):
     import tomllib
