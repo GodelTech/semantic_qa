@@ -1,6 +1,7 @@
 tomli
 langchain
 openai
+tiktoken
 unstructured[all-docs]
 tqdm
 sentence-transformers
@@ -10,3 +11,4 @@ pinecone-client
 redis
 pgvector
 psycopg2-binary
+pymongo

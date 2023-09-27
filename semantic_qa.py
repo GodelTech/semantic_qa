@@ -31,12 +31,15 @@ from langchain.vectorstores import (
     Redis,
     PGVector,
     Pinecone,
+    MongoDBAtlasVectorSearch,
 )
 
 from langchain.chat_models import ChatOpenAI
 from langchain.prompts import PromptTemplate
 from langchain.chains.question_answering import load_qa_chain
 from langchain.chains import RetrievalQA
+
+from pymongo.collection import Collection as MongodbCollection
 
 if sys.version_info >= (3, 11):
     import tomllib
@@ -51,6 +54,7 @@ class VectordbProviders(Enum):
     REDIS = "redis"
     PGVECTOR = "pgvector"
     PINECONE = "pinecone"
+    MONGODB_ATLAS = "mongodb_atlas"
 
 
 class EmbeddingsProviders(Enum):
@@ -62,6 +66,9 @@ class EmbeddingsProviders(Enum):
 
 
 toml_config: dict = {}
+
+with open("config.toml", "rb") as f:
+    toml_config = tomllib.load(f)
 
 
 def load_docs(directories: list[str], glob: str) -> list[Document]:
@@ -195,6 +202,27 @@ def _fix_vector_db(provider: VectordbProviders) -> None:
             )
 
 
+def _create_mongodb_connection(
+    connection_string: str, db_name: str, collection_name: str
+) -> MongodbCollection:
+    """Creates a MongoDB collection object, needed to create an instance of MongoDBAtlasVectorSearch
+
+    Args:
+        connection_string (str): MongoDB Atlas connection string
+        db_name (str): database name
+        collection_name (str): collection name
+
+    Returns:
+        MongodbCollection: collection object, ready to use in the MongoDBAtlasVectorSearch __init__
+    """
+    # pylint: disable=import-outside-toplevel
+    from pymongo import MongoClient
+
+    mongo_client: MongoClient = MongoClient(connection_string)
+    collection = mongo_client[db_name][collection_name]
+    return collection
+
+
 def create_vector_db_from_docs(
     provider: VectordbProviders,
     collection_name: str,
@@ -247,6 +275,17 @@ def create_vector_db_from_docs(
                 index_name=collection_name,
             )
 
+        case VectordbProviders.MONGODB_ATLAS:
+            vectordb = MongoDBAtlasVectorSearch.from_documents(
+                documents=documents,
+                embedding=embed_function,
+                collection=_create_mongodb_connection(
+                    toml_config["mongodb_atlas"]["connection_string"],
+                    toml_config["mongodb_atlas"]["db_name"],
+                    collection_name,
+                ),
+            )
+
     return vectordb
 
 
@@ -293,6 +332,16 @@ def open_vector_db_for_querying(
                 index_name=collection_name,
                 embedding=embed_function,
                 text_key="text",
+            )
+
+        case VectordbProviders.MONGODB_ATLAS:
+            vectordb = MongoDBAtlasVectorSearch(
+                embedding=embed_function,
+                collection=_create_mongodb_connection(
+                    toml_config["mongodb_atlas"]["connection_string"],
+                    toml_config["mongodb_atlas"]["db_name"],
+                    collection_name,
+                ),
             )
 
     return vectordb
@@ -373,11 +422,8 @@ def run_custom_retrieval_chain(
 
 
 if __name__ == "__main__":
-    with open("config.toml", "rb") as f:
-        toml_config = tomllib.load(f)
-
     REBUILD = True  #  Rebuild doc embeddings?
-    vectordb_provider = VectordbProviders.PGVECTOR
+    vectordb_provider = VectordbProviders.MONGODB_ATLAS
     embeddings_provider = EmbeddingsProviders.INSTRUCTOR
 
     if REBUILD:

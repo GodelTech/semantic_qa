@@ -1,14 +1,14 @@
 
 [docs]
 source_dirs = ["corpus"]
-glob = "**/[!.]*.*" # Every (non-hidden) doc with any extension
+glob = "**/[!.]*.*x" # Every (non-hidden) doc with any extension
 
 [splitter]
 chunk_size = 1000
 chunk_overlap = 20
 
 [openai]
-api_key = "API-KEY"
+api_key = "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"
 chat_model = "gpt-3.5-turbo" # Don't try to use "gpt-4" unless you've prepaid or are in the premium tier
 temperature = 0.7 # Between 0 and 1, governs the randomness (and thus the creativity) of the responses
 
@@ -26,7 +26,8 @@ api_key = "API_KEY" # From pinecone.io
 environment = "ENVIRONMENT" # From pinecone.io
 
 [mongodb_atlas]
-connection_string = "mongodb+srv://username:password@cluster.xxxxxxx.mongodb.net/?retryWrites=true&w=majority"
+connection_string = "mongodb+srv://jgarciadebustos:lbLYaxjQVQkAGJaP@cluster0.3oylotm.mongodb.net/?retryWrites=true&w=majority"
+#connection_string = "mongodb+srv://jgbustos:mR43YIV0wkI8fa6y@cluster0.q8zpsdh.mongodb.net/?retryWrites=true&w=majority&tlsInsecure=true"
 db_name = "vectors"
 
 [general]
