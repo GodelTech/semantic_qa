@@ -7,7 +7,7 @@ chunk_size = 1000
 chunk_overlap = 20
 
 [openai]
-api_key = "API-KEY"
+api_key = "API-KEY" # Don't write it here, put it in non-versioned secrets.toml
 chat_model = "gpt-3.5-turbo" # Don't try to use "gpt-4" unless you've prepaid or are in the premium tier
 temperature = 0.7 # Between 0 and 1, governs the randomness (and thus the creativity) of the responses
 
@@ -21,11 +21,11 @@ url = "redis://localhost:6379"
 connection_string = "postgresql+psycopg2://vector_user:vector_pass@localhost:5432/vectors"
 
 [pinecone]
-api_key = "API_KEY" # From pinecone.io
+api_key = "API_KEY" # From pinecone.io, don't write it here, put it in non-versioned secrets.toml
 environment = "ENVIRONMENT" # From pinecone.io
 
 [mongodb_atlas]
-connection_string = "mongodb+srv://username:password@cluster.xxxxxxx.mongodb.net/?retryWrites=true&w=majority"
+connection_string = "mongodb+srv://username:password@cluster.xxxxxxx.mongodb.net/?retryWrites=true&w=majority" # Don't write it here, put it in non-versioned secrets.toml
 db_name = "vectors"
 
 [general]
