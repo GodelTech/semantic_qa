@@ -25,6 +25,10 @@ connection_string = "postgresql+psycopg2://vector_user:vector_pass@localhost:543
 api_key = "API_KEY" # From pinecone.io
 environment = "ENVIRONMENT" # From pinecone.io
 
+[mongodb_atlas]
+connection_string = "mongodb+srv://username:password@cluster.xxxxxxx.mongodb.net/?retryWrites=true&w=majority"
+db_name = "vectors"
+
 [general]
 collection_name = "docs"
 default_device = "cuda" # use "cuda" if your machine has a suitable graphics card, "cpu" otherwise
