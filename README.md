@@ -60,3 +60,12 @@ The demo currently supports:
 ```
 
 The first time it runs, leave REBUILD = True to ensure the script iterates over the files in the corpus and generates the embeddings. In successive runs, you can change REBUILD = False and just test different values of QUERY_STR or tweaks to the GPT prompt.
+
+## Web UI
+
+```
+(venv) $> chainlit run ./chainlit_app.py -w
+```
+
+This will run a small web UI on port 8000 by default.
+
