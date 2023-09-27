@@ -41,6 +41,7 @@ The demo currently supports the following vector stores:
  * [Pgvector](https://github.com/pgvector/pgvector). [Set-up instructions](vector_stores_howtos/pgvector.md)
  * [Redis Stack](https://redis.io/docs/about/about-stack/). [Set-up instructions](vector_stores_howtos/redis-stack.md)
  * [Pinecone](https://www.pinecone.io/). [Set-up instructions](vector_stores_howtos/pinecone.md)
+ * [MongoDB Atlas](https://www.mongodb.com/atlas/database). [Set-up instructions](vector_stores_howtos/mongodb_atlas.md)
 
 The first one uses file-based SQLite for storage and does not require any work. The other three need some set up, detailed in the links above.
 
