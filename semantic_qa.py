@@ -41,6 +41,8 @@ from langchain.chains import RetrievalQA
 
 from pymongo.collection import Collection as MongodbCollection
 
+from pydantic.utils import deep_update
+
 if sys.version_info >= (3, 11):
     import tomllib
 else:
@@ -69,6 +71,10 @@ toml_config: dict = {}
 
 with open("config.toml", "rb") as f:
     toml_config = tomllib.load(f)
+with open("secrets.toml", "rb") as g:
+    toml_secrets = tomllib.load(g)
+
+toml_config = deep_update(toml_config, toml_secrets)
 
 
 def load_docs(directories: list[str], glob: str) -> list[Document]:
