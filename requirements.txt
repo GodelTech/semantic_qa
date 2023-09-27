@@ -12,3 +12,4 @@ redis
 pgvector
 psycopg2-binary
 pymongo
+chainlit
