@@ -1,37 +1,43 @@
+[general]
+# Name given to the embeddings vector collection 
+collection_name = "docs"
+# Used when generating embeddings with a locally downloaded model, e.g. Hugging Face or Instructor
+default_device = "cuda"
+
 [docs]
+# List of directories where source documents live
 source_dirs = ["corpus"]
-glob = "**/[!.]*.*" # Every (non-hidden) doc with any extension
+# File mask, e.g. "**/[!.]*.*" every (non-hidden) doc with any extension 
+glob = "**/[!.]*.*"
 
 [splitter]
+# Target number of tokens per document chunk 
 chunk_size = 1000
+# Target number of overlap tokens 
 chunk_overlap = 20
 
+[search_params]
+# Can be "similarity" (default), "similarity_score_threshold", or "mmr" (Maximal Marginal Relevance algorithm
+# which optimises for BOTH similarity to querystring AND diversity amongst selected documents
+algorithm = "similarity"
+# Number of documents to retrieve on "similarity" search
+k = 4
+# Number of docs passed to MMR algorithm
+fetch_k = 20
+# Diversity of results returned by MMR (1 for minimum diversity and 0 for maximum)
+lambda_mult = 0.5
+# Minimum relevance threshold for "similarity_score_threshold"
+score_threshold = 0.5
+
 [openai]
-api_key = "API-KEY" # Don't write it here, put it in non-versioned secrets.toml
-chat_model = "gpt-3.5-turbo" # Don't try to use "gpt-4" unless you've prepaid or are in the premium tier
-temperature = 0.7 # Between 0 and 1, governs the randomness (and thus the creativity) of the responses
-
-[chromadb]
-persistence_root_dir = "chroma_db"
-
-[redis]
-url = "redis://localhost:6379"
-
-[pgvector]
-connection_string = "postgresql+psycopg2://vector_user:vector_pass@localhost:5432/vectors" # Don't write it here, put it in non-versioned secrets.toml
-
-[pinecone]
-api_key = "API_KEY" # From pinecone.io, don't write it here, put it in non-versioned secrets.toml
-environment = "ENVIRONMENT" # From pinecone.io
-
-[mongodb_atlas]
-connection_string = "mongodb+srv://username:password@cluster.xxxxxxx.mongodb.net/?retryWrites=true&w=majority" # Don't write it here, put it in non-versioned secrets.toml
-db_name = "vectors"
-
-[general]
-collection_name = "docs"
-default_device = "cuda" # use "cuda" if your machine has a suitable graphics card, "cpu" otherwise
-prompt_template = """You are an AI assistant that answers questions about our company's policy. 
+# Don't write it here, put it in non-versioned secrets.toml
+api_key = "API-KEY"
+# Don't try to use "gpt-4" unless you've prepaid or are in the premium tier
+chat_model = "gpt-3.5-turbo"
+# Between 0 and 1, governs the randomness (and thus the creativity) of the responses
+temperature = 0.7
+# Prompt template fed to the GPT model
+prompt_template = """You are an AI assistant that answers questions from our sales team about our company's delivery expertise. 
 Use the following pieces of context to answer the question at the end.
 If you don't know the answer, just say that you don't know, don't try to make up an answer.
 Always say thank you at the end.
@@ -40,3 +46,27 @@ Always say thank you at the end.
 
 Question: {question}
 Helpful, extended answer:"""
+
+[chromadb]
+# Root directory to persist the CromaDB SQLite database and other files
+persistence_root_dir = "chroma_db"
+
+[redis]
+# URL to access the Redis Stack instance
+url = "redis://localhost:6379"
+
+[pgvector]
+# sqlalchemy-style connection string .Don't write it here, put it in non-versioned secrets.toml
+connection_string = "postgresql+psycopg2://vector_user:vector_pass@localhost:5432/vectors"
+
+[pinecone]
+# Don't write it here, put it in non-versioned secrets.toml
+api_key = "API_KEY"
+# Environment name from pinecone.io
+environment = "ENVIRONMENT"
+
+[mongodb_atlas]
+# Don't write it here, put it in non-versioned secrets.toml
+connection_string = "mongodb+srv://username:password@cluster.xxxxxxx.mongodb.net/?retryWrites=true&w=majority"
+# DB name
+db_name = "vectors"
