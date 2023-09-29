@@ -5,7 +5,7 @@ from enum import Enum
 import datetime
 import pathlib
 import hashlib
-from typing import Any, Optional
+from typing import cast, Any, Optional
 from pprint import pprint
 
 import tqdm
@@ -294,9 +294,9 @@ def create_vector_db_from_docs(
             vectordb = MongoDBAtlasVectorSearch.from_documents(
                 documents=documents,
                 embedding=embed_function,
-                collection=MongoClient(_fix)[toml_config["mongodb_atlas"]["db_name"]][
-                    collection_name
-                ],
+                collection=cast(MongoClient, _fix)[
+                    toml_config["mongodb_atlas"]["db_name"]
+                ][collection_name],
             )
 
     return vectordb
@@ -352,9 +352,9 @@ def open_vector_db_for_querying(
 
             vectordb = MongoDBAtlasVectorSearch(
                 embedding=embed_function,
-                collection=MongoClient(_fix)[toml_config["mongodb_atlas"]["db_name"]][
-                    collection_name
-                ],
+                collection=cast(MongoClient, _fix)[
+                    toml_config["mongodb_atlas"]["db_name"]
+                ][collection_name],
             )
 
     return vectordb
