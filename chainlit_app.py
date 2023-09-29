@@ -46,12 +46,12 @@ async def chat_start() -> None:
 
 
 @on_message
-async def message_received(message_content: str, message_id: str) -> None:
+async def message_received(message_content: str, _message_id: str) -> None:
     """This method runs every time a user sends a chat message
 
     Args:
         message_content (str): message content received from the user
-        message_id (str): message id
+        _message_id (str): message id
     """
     answer = run_custom_retrieval_chain(
         user_session.get("openai_model"),
