@@ -5,7 +5,7 @@ from enum import Enum
 import datetime
 import pathlib
 import hashlib
-from typing import Any
+from typing import Any, Optional
 from pprint import pprint
 
 import tqdm
@@ -39,9 +39,7 @@ from langchain.prompts import PromptTemplate
 from langchain.chains.question_answering import load_qa_chain
 from langchain.chains import RetrievalQA
 
-from pymongo.collection import Collection as MongodbCollection
-
-from pydantic.utils import deep_update # pylint: disable=no-name-in-module
+from pydantic.utils import deep_update  # pylint: disable=no-name-in-module
 
 if sys.version_info >= (3, 11):
     import tomllib
@@ -119,6 +117,24 @@ def enrich_source_documents(documents: list[Document]) -> list[Document]:
         document.metadata["file_mod_time"] = m_time.strftime("%Y-%m-%d %H:%M:%S")
         document.metadata["file_size"] = str(path.stat().st_size)
         document.metadata["file_sha1"] = hashlib.sha1(path.read_bytes()).hexdigest()
+        document.metadata["file_name"] = path.stem
+        document.metadata["file_ext"] = path.suffix
+        # Additional application-specific enrichment, if needed
+    return documents
+
+
+def enrich_chunked_documents(documents: list[Document]) -> list[Document]:
+    """Iterates over documents, enriching metadata and content with useful information
+
+    Args:
+        documents (list[Document]): chunked docs
+
+    Returns:
+        list[Document]: enriched, chunked docs
+    """
+    for document in tqdm.tqdm(documents):
+        # Generic enrichment, adding modification time and file size
+        document.metadata["chunk_length"] = len(document.page_content)
         # Additional application-specific enrichment, if needed
     return documents
 
@@ -184,13 +200,17 @@ def create_embeddings_function(
     return embeddings
 
 
-def _fix_vector_db(provider: VectordbProviders) -> None:
+def _fix_vector_db(provider: VectordbProviders) -> Optional[Any]:
     """Takes care of specific initialisation and fixing
 
     Args:
-        provider (VectordbProviders): one of OPENAI, HUGGINGFACE, INSTRUCTOR
+        provider (VectordbProviders): one of OPENAI, HUGGINGFACE, INSTRUCTOR, MONGODB_ATLAS
+
+    Returns:
+        Optional[Any]: in most cases None, but MongoDBAtlasVectorSearch needs a MongoClient
     """
     # pylint: disable=import-outside-toplevel
+    ret = None
     match provider:
         case VectordbProviders.PGVECTOR:
             import sqlalchemy
@@ -199,6 +219,7 @@ def _fix_vector_db(provider: VectordbProviders) -> None:
                 toml_config["pgvector"]["connection_string"]
             ).begin() as conn:
                 conn.execute(sqlalchemy.text("create extension if not exists vector;"))
+
         case VectordbProviders.PINECONE:
             import pinecone  # type: ignore
 
@@ -207,26 +228,12 @@ def _fix_vector_db(provider: VectordbProviders) -> None:
                 environment=toml_config["pinecone"]["environment"],
             )
 
+        case VectordbProviders.MONGODB_ATLAS:
+            from pymongo import MongoClient
 
-def _create_mongodb_connection(
-    connection_string: str, db_name: str, collection_name: str
-) -> MongodbCollection:
-    """Creates a MongoDB collection object, needed to create an instance of MongoDBAtlasVectorSearch
+            ret = MongoClient(toml_config["mongodb_atlas"]["connection_string"])
 
-    Args:
-        connection_string (str): MongoDB Atlas connection string
-        db_name (str): database name
-        collection_name (str): collection name
-
-    Returns:
-        MongodbCollection: collection object, ready to use in the MongoDBAtlasVectorSearch __init__
-    """
-    # pylint: disable=import-outside-toplevel
-    from pymongo import MongoClient
-
-    mongo_client: MongoClient = MongoClient(connection_string)
-    collection = mongo_client[db_name][collection_name]
-    return collection
+    return ret
 
 
 def create_vector_db_from_docs(
@@ -238,7 +245,7 @@ def create_vector_db_from_docs(
     """Creates or rebuilds an embeddings vector store, populated with document and embeddings
 
     Args:
-        provider (VectordbProviders): one of CHROMADB, REDIS, PGVECTOR, PINECONE
+        provider (VectordbProviders): one of CHROMADB, REDIS, PGVECTOR, PINECONE, MONGODB_ATLAS
         collection_name (str): name given to the document collection
         documents (list[Document]): list of documents to store and embed
         embed_function (Embeddings): embeddings generator function
@@ -246,7 +253,7 @@ def create_vector_db_from_docs(
     Returns:
         VectorStore: populated vector store, with documents and embeddings
     """
-    _fix_vector_db(provider=provider)
+    _fix = _fix_vector_db(provider=provider)
     vectordb: VectorStore
     match provider:
         case VectordbProviders.CHROMADB:
@@ -282,14 +289,14 @@ def create_vector_db_from_docs(
             )
 
         case VectordbProviders.MONGODB_ATLAS:
+            from pymongo import MongoClient  # pylint: disable=import-outside-toplevel
+
             vectordb = MongoDBAtlasVectorSearch.from_documents(
                 documents=documents,
                 embedding=embed_function,
-                collection=_create_mongodb_connection(
-                    toml_config["mongodb_atlas"]["connection_string"],
-                    toml_config["mongodb_atlas"]["db_name"],
-                    collection_name,
-                ),
+                collection=MongoClient(_fix)[toml_config["mongodb_atlas"]["db_name"]][
+                    collection_name
+                ],
             )
 
     return vectordb
@@ -301,14 +308,14 @@ def open_vector_db_for_querying(
     """Opens an existing embeddings vector store
 
     Args:
-        provider (VectordbProviders): one of CHROMADB, REDIS, PGVECTOR, PINECONE
+        provider (VectordbProviders): one of CHROMADB, REDIS, PGVECTOR, PINECONE, MONGODB_ATLAS
         collection_name (str): name of the document collection, same as when it was created
         embed_function (Embeddings): embeddings generator function
 
     Returns:
         VectorStore: the vector store
     """
-    _fix_vector_db(provider=provider)
+    _fix = _fix_vector_db(provider=provider)
     vectordb: VectorStore
     match provider:
         case VectordbProviders.CHROMADB:
@@ -341,13 +348,13 @@ def open_vector_db_for_querying(
             )
 
         case VectordbProviders.MONGODB_ATLAS:
+            from pymongo import MongoClient  # pylint: disable=import-outside-toplevel
+
             vectordb = MongoDBAtlasVectorSearch(
                 embedding=embed_function,
-                collection=_create_mongodb_connection(
-                    toml_config["mongodb_atlas"]["connection_string"],
-                    toml_config["mongodb_atlas"]["db_name"],
-                    collection_name,
-                ),
+                collection=MongoClient(_fix)[toml_config["mongodb_atlas"]["db_name"]][
+                    collection_name
+                ],
             )
 
     return vectordb
@@ -405,22 +412,18 @@ def run_custom_retrieval_chain(
     Returns:
         a response that is heavily dependent on the prompt and search_kwargs
     """
+    search_params = dict(toml_config["search_params"])
     return RetrievalQA.from_chain_type(
         llm,
         chain_type="stuff",
         # verbose=True,
         retriever=vector_db.as_retriever(
-            # search_type="similarity",
-            search_kwargs={
-                "k": 6,
-                # "score_threshold": 0.2,
-                "fetch_k": 50,
-                "lambda_mult": 0.25,
-            },
+            search_type=search_params.pop("algorithm"),
+            search_kwargs=search_params,
         ),
         chain_type_kwargs={
             "prompt": PromptTemplate(
-                template=toml_config["general"]["prompt_template"],
+                template=toml_config["openai"]["prompt_template"],
                 input_variables=["context", "question"],
             )
         },
@@ -436,10 +439,13 @@ if __name__ == "__main__":
         create_vector_db_from_docs(
             provider=vectordb_provider,
             collection_name=toml_config["general"]["collection_name"],
-            documents=split_docs(
-                enrich_source_documents(
-                    load_docs(
-                        toml_config["docs"]["source_dirs"], toml_config["docs"]["glob"]
+            documents=enrich_chunked_documents(
+                split_docs(
+                    enrich_source_documents(
+                        load_docs(
+                            toml_config["docs"]["source_dirs"],
+                            toml_config["docs"]["glob"],
+                        )
                     )
                 )
             ),
