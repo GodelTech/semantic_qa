@@ -10,8 +10,25 @@
 
 1. Once the cluster is provisioned, create a new database and collection with suitable names, and write both to the TOML config file
 
-1. Finally, obtain the connection string which will look like
+1. Obtain the connection string which will look like the one below, and save it to secrets.toml
 
-```
-mongodb+srv://username:password@cluster.xxxxxxx.mongodb.net/?retryWrites=true&w=majority
-```
+    ```
+    mongodb+srv://username:password@cluster.xxxxxxx.mongodb.net/?retryWrites=true&w=majority
+    ```
+
+1. Create a new "Search" index, using the JSON editor, for the database and collection you created earlier, and the following JSON content (replace XXX with the dimension number of your embeddings model):
+
+    ```
+    {
+      "mappings": {
+        "dynamic": true,
+        "fields": {
+          "embedding": {
+            "dimensions": XXX,
+            "similarity": "cosine",
+            "type": "knnVector"
+          }
+        }
+      }
+    }
+    ```
