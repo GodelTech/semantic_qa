@@ -23,11 +23,11 @@ algorithm = "similarity"
 # Number of documents to retrieve on "similarity" search
 k = 4
 # Number of docs passed to MMR algorithm
-fetch_k = 20
+# fetch_k = 20
 # Diversity of results returned by MMR (1 for minimum diversity and 0 for maximum)
-lambda_mult = 0.5
+# lambda_mult = 0.5
 # Minimum relevance threshold for "similarity_score_threshold"
-score_threshold = 0.5
+# score_threshold = 0.5
 
 [openai]
 # Don't write it here, put it in non-versioned secrets.toml
@@ -37,7 +37,7 @@ chat_model = "gpt-3.5-turbo"
 # Between 0 and 1, governs the randomness (and thus the creativity) of the responses
 temperature = 0.7
 # Prompt template fed to the GPT model
-prompt_template = """You are an AI assistant that answers questions from our sales team about our company's delivery expertise. 
+prompt_template = """You are an AI assistant that answers questions about our company's policy. 
 Use the following pieces of context to answer the question at the end.
 If you don't know the answer, just say that you don't know, don't try to make up an answer.
 Always say thank you at the end.
