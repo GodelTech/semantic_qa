@@ -1,12 +1,14 @@
 """Implements basic semantic Q&A bot on a document collection"""
 
 import sys
+import os
 from enum import Enum
 import datetime
 import pathlib
 import hashlib
 from typing import cast, Any, Optional
 from pprint import pprint
+import numpy as np
 
 import tqdm
 
@@ -39,7 +41,7 @@ from langchain.prompts import PromptTemplate
 from langchain.chains.question_answering import load_qa_chain
 from langchain.chains import RetrievalQA
 
-from pydantic.utils import deep_update  # pylint: disable=no-name-in-module
+from pydantic.v1.utils import deep_update
 
 if sys.version_info >= (3, 11):
     import tomllib
@@ -175,24 +177,24 @@ def create_embeddings_function(
     match provider:
         case EmbeddingsProviders.OPENAI:
             embeddings = OpenAIEmbeddings(
-                model="text-embedding-ada-002",
+                model="text-embedding-ada-002",  # Dimensions = 1536
                 openai_api_key=toml_config["openai"]["api_key"],
                 show_progress_bar=show_progress,
             )
 
         case EmbeddingsProviders.HUGGINGFACE:
             embeddings = HuggingFaceEmbeddings(
-                # model_name="gtr-t5-large",
-                # model_name="all-mpnet-base-v2",
-                model_name="all-MiniLM-L6-v2",
+                # model_name="gtr-t5-large",  # Dimensions = 768
+                # model_name="all-mpnet-base-v2",  # Dimensions = 768
+                model_name="all-MiniLM-L6-v2",  # Dimensions = 384
                 model_kwargs={"device": toml_config["general"]["default_device"]},
                 encode_kwargs={"show_progress_bar": show_progress},
             )
 
         case EmbeddingsProviders.INSTRUCTOR:
             embeddings = HuggingFaceInstructEmbeddings(
-                # model_name="hkunlp/instructor-base",
-                model_name="hkunlp/instructor-large",
+                # model_name="hkunlp/instructor-base",  # Dimensions = 768
+                model_name="hkunlp/instructor-large",  # Dimensions = 768
                 model_kwargs={"device": toml_config["general"]["default_device"]},
                 encode_kwargs={"show_progress_bar": show_progress},
             )
@@ -373,7 +375,7 @@ def output_relevant_docs(
     Returns:
         list[tuple[Document, float]]: list of matches of the form [matching_doc, matching_score]
     """
-    return vector_db.similarity_search_with_score(query_str, k)
+    return vector_db.similarity_search_with_score(query_str, k=k)
 
 
 def run_qa_chain(
@@ -456,12 +458,19 @@ if __name__ == "__main__":
         )
 
     QUERY_STR = "Shall I open an email with an attachment I just received from an unknown sender?"
+    QUERY_ESP = (
+        "¿Debo abrir un correo electrónico con un archivo adjunto "
+        "que acabo de recibir de un remitente desconocido?"
+    )
+
+    embed_creator = create_embeddings_function(
+        provider=embeddings_provider, show_progress=False
+    )
+
     query_db: VectorStore = open_vector_db_for_querying(
         provider=vectordb_provider,
         collection_name=toml_config["general"]["collection_name"],
-        embed_function=create_embeddings_function(
-            provider=embeddings_provider, show_progress=False
-        ),
+        embed_function=embed_creator,
     )
     openai_model = ChatOpenAI(
         model=toml_config["openai"]["chat_model"],
@@ -469,15 +478,35 @@ if __name__ == "__main__":
         temperature=toml_config["openai"]["temperature"],
     )
 
+    embeddings_english = np.array(embed_creator.embed_query(QUERY_STR))
+    embeddings_spanish = np.array(embed_creator.embed_query(QUERY_ESP))
+
+    # Print out the QUERY_STR embeddings
+    pprint(
+        embeddings_english.tolist(),
+        compact=True,
+        width=os.get_terminal_size().columns,
+    )
+    print("-" * 70)
+
+    # Show the semantic similarity between the English and Spanish sentences,
+    # calculated as the cosine distance between their embeddings:
+    #  cos(theta) = dot_product(eng, spa) / (norm(eng) * norm(spa))
+    similarity = np.dot(embeddings_english, embeddings_spanish) / (
+        np.linalg.norm(embeddings_english) * np.linalg.norm(embeddings_spanish)
+    )
+    print(f"similarity: {similarity}")
+    print("-" * 70)
+
     # Return the top k relevant docs
-    # matches = output_relevant_docs(query_db, QUERY_STR, 3)
-    # pprint(matches)
-    # print("-" * 70)
+    matches = output_relevant_docs(query_db, QUERY_STR, 3)
+    pprint(matches)
+    print("-" * 70)
 
     # Answer the question using default langchain prompt
-    # answer = run_qa_chain(openai_model, query_db, QUERY_STR, 3)
-    # print(answer)
-    # print("-" * 70)
+    answer = run_qa_chain(openai_model, query_db, QUERY_STR, 3)
+    print(answer)
+    print("-" * 70)
 
     # Customise the prompt and retrieval parameters
     answer = run_custom_retrieval_chain(openai_model, query_db, QUERY_STR)
