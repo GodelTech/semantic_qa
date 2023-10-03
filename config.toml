@@ -70,3 +70,7 @@ environment = "ENVIRONMENT"
 connection_string = "mongodb+srv://username:password@cluster.xxxxxxx.mongodb.net/?retryWrites=true&w=majority"
 # DB name
 db_name = "vectors"
+
+[elasticsearch]
+# Don't write it here, put it in non-versioned secrets.toml
+url="http://elastic:my_secret_pwd@localhost:9200"

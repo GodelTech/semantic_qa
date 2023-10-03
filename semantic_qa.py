@@ -33,7 +33,8 @@ from langchain.vectorstores import (
     Redis,
     PGVector,
     Pinecone,
-    MongoDBAtlasVectorSearch,
+    MongoDBAtlasVectorSearch,  # Broken in langchain>=0.0.305 for MongoDB<7
+    ElasticsearchStore,
 )
 
 from langchain.chat_models import ChatOpenAI
@@ -57,6 +58,7 @@ class VectordbProviders(Enum):
     PGVECTOR = "pgvector"
     PINECONE = "pinecone"
     MONGODB_ATLAS = "mongodb_atlas"
+    ELASTICSEARCH = "elasticsearch"
 
 
 class EmbeddingsProviders(Enum):
@@ -206,7 +208,7 @@ def _fix_vector_db(provider: VectordbProviders) -> Optional[Any]:
     """Takes care of specific initialisation and fixing
 
     Args:
-        provider (VectordbProviders): one of OPENAI, HUGGINGFACE, INSTRUCTOR, MONGODB_ATLAS
+        provider (VectordbProviders): (OPENAI|HUGGINGFACE|INSTRUCTOR|MONGODB_ATLAS|ELASTICSEARCH)
 
     Returns:
         Optional[Any]: in most cases None, but MongoDBAtlasVectorSearch needs a MongoClient
@@ -247,7 +249,7 @@ def create_vector_db_from_docs(
     """Creates or rebuilds an embeddings vector store, populated with document and embeddings
 
     Args:
-        provider (VectordbProviders): one of CHROMADB, REDIS, PGVECTOR, PINECONE, MONGODB_ATLAS
+        provider (VectordbProviders): (OPENAI|HUGGINGFACE|INSTRUCTOR|MONGODB_ATLAS|ELASTICSEARCH)
         collection_name (str): name given to the document collection
         documents (list[Document]): list of documents to store and embed
         embed_function (Embeddings): embeddings generator function
@@ -301,6 +303,15 @@ def create_vector_db_from_docs(
                 ][collection_name],
             )
 
+        case VectordbProviders.ELASTICSEARCH:
+            vectordb = ElasticsearchStore.from_documents(
+                documents=documents,
+                embedding=embed_function,
+                index_name=collection_name,
+                es_url=toml_config["elasticsearch"]["url"],
+                distance_strategy="COSINE",
+            )
+
     return vectordb
 
 
@@ -310,7 +321,7 @@ def open_vector_db_for_querying(
     """Opens an existing embeddings vector store
 
     Args:
-        provider (VectordbProviders): one of CHROMADB, REDIS, PGVECTOR, PINECONE, MONGODB_ATLAS
+        provider (VectordbProviders): (OPENAI|HUGGINGFACE|INSTRUCTOR|MONGODB_ATLAS|ELASTICSEARCH)
         collection_name (str): name of the document collection, same as when it was created
         embed_function (Embeddings): embeddings generator function
 
@@ -357,6 +368,14 @@ def open_vector_db_for_querying(
                 collection=cast(MongoClient, _fix)[
                     toml_config["mongodb_atlas"]["db_name"]
                 ][collection_name],
+            )
+
+        case VectordbProviders.ELASTICSEARCH:
+            vectordb = ElasticsearchStore(
+                embedding=embed_function,
+                index_name=collection_name,
+                es_url=toml_config["elasticsearch"]["url"],
+                distance_strategy="COSINE",
             )
 
     return vectordb
@@ -434,7 +453,7 @@ def run_custom_retrieval_chain(
 
 if __name__ == "__main__":
     REBUILD = True  #  Rebuild doc embeddings?
-    vectordb_provider = VectordbProviders.MONGODB_ATLAS
+    vectordb_provider = VectordbProviders.ELASTICSEARCH
     embeddings_provider = EmbeddingsProviders.INSTRUCTOR
 
     if REBUILD:
