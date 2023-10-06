@@ -375,7 +375,6 @@ def open_vector_db_for_querying(
                 embedding=embed_function,
                 index_name=collection_name,
                 es_url=toml_config["elasticsearch"]["url"],
-                distance_strategy="COSINE",
             )
 
     return vectordb
@@ -451,6 +450,24 @@ def run_custom_retrieval_chain(
     ).run(query_str)
 
 
+def get_cosine_similarity(a: list[float], b: list[float]) -> float:
+    """Calculates the cosine similarity between two vectors:
+        cos(theta) = dot_product(a, b) / (norm(a) * norm(b))
+
+    Args:
+        a (list[float]): vector a
+        b (list[float]): vector b
+
+    Returns:
+        float: cosine of the "hyper-angle" between the vectors
+    """
+    array_a = np.array(a)
+    array_b = np.array(b)
+    return float(
+        np.dot(array_a, array_b) / (np.linalg.norm(array_a) * np.linalg.norm(array_b))
+    )
+
+
 if __name__ == "__main__":
     REBUILD = True  #  Rebuild doc embeddings?
     vectordb_provider = VectordbProviders.ELASTICSEARCH
@@ -477,6 +494,7 @@ if __name__ == "__main__":
         )
 
     QUERY_STR = "Shall I open an email with an attachment I just received from an unknown sender?"
+    QUERY_ALT = "I just got an email from someone I don't know containing a file. Should I open it?"
     QUERY_ESP = (
         "¿Debo abrir un correo electrónico con un archivo adjunto "
         "que acabo de recibir de un remitente desconocido?"
@@ -497,23 +515,24 @@ if __name__ == "__main__":
         temperature=toml_config["openai"]["temperature"],
     )
 
-    embeddings_english = np.array(embed_creator.embed_query(QUERY_STR))
-    embeddings_spanish = np.array(embed_creator.embed_query(QUERY_ESP))
+    embeddings_english = embed_creator.embed_query(QUERY_STR)
+    embeddings_spanish = embed_creator.embed_query(QUERY_ESP)
+    embeddings_alternative = embed_creator.embed_query(QUERY_ALT)
 
-    # Print out the QUERY_STR embeddings
+    # Print out the QUERY_STR embeddings, truncating their decimal digits
     pprint(
-        embeddings_english.tolist(),
+        [f"{embed:+.8f}" for embed in embeddings_english],
         compact=True,
         width=os.get_terminal_size().columns,
     )
     print("-" * 70)
 
-    # Show the semantic similarity between the English and Spanish sentences,
-    # calculated as the cosine distance between their embeddings:
-    #  cos(theta) = dot_product(eng, spa) / (norm(eng) * norm(spa))
-    similarity = np.dot(embeddings_english, embeddings_spanish) / (
-        np.linalg.norm(embeddings_english) * np.linalg.norm(embeddings_spanish)
-    )
+    # Show the semantic similarity between the sentences,
+    # calculated as the cosine distance between their embeddings
+    similarity = get_cosine_similarity(embeddings_english, embeddings_alternative)
+    print(f"similarity: {similarity}")
+    print("-" * 70)
+    similarity = get_cosine_similarity(embeddings_english, embeddings_spanish)
     print(f"similarity: {similarity}")
     print("-" * 70)
 
