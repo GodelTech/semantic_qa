@@ -3,6 +3,10 @@
 collection_name = "docs"
 # Used when generating embeddings with a locally downloaded model, e.g. Hugging Face or Instructor
 default_device = "cuda"
+# Choose amongst: "chromadb", "redis", "pgvector", "pinecone", "mongodb_atlas", "elasticsearch"
+vectordb_provider = "redis"
+# Choose amongst: "openai", "huggingface", "instructor"
+embeddings_provider = "instructor"
 
 [docs]
 # List of directories where source documents live

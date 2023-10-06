@@ -69,14 +69,21 @@ class EmbeddingsProviders(Enum):
     INSTRUCTOR = "instructor"
 
 
-toml_config: dict = {}
+def read_config() -> dict:
+    """Reads the TOML config files and builds the merged config dict by reading config.toml
+    (Git version controlled), then merging secrets.toml (non-version controlled) on top
 
-with open("config.toml", "rb") as f:
-    toml_config = tomllib.load(f)
-with open("secrets.toml", "rb") as g:
-    toml_secrets = tomllib.load(g)
+    Returns:
+        dict: merged config dictionary
+    """
+    with open("config.toml", "rb") as f:
+        config = tomllib.load(f)
+    with open("secrets.toml", "rb") as g:
+        secrets = tomllib.load(g)
+    return deep_update(config, secrets)
 
-toml_config = deep_update(toml_config, toml_secrets)
+
+toml_config: dict = read_config()
 
 
 def load_docs(directories: list[str], glob: str) -> list[Document]:
@@ -470,8 +477,10 @@ def get_cosine_similarity(a: list[float], b: list[float]) -> float:
 
 if __name__ == "__main__":
     REBUILD = True  #  Rebuild doc embeddings?
-    vectordb_provider = VectordbProviders.ELASTICSEARCH
-    embeddings_provider = EmbeddingsProviders.INSTRUCTOR
+    vectordb_provider = VectordbProviders(toml_config["general"]["vectordb_provider"])
+    embeddings_provider = EmbeddingsProviders(
+        toml_config["general"]["embeddings_provider"]
+    )
 
     if REBUILD:
         create_vector_db_from_docs(

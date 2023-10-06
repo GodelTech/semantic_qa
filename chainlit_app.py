@@ -29,10 +29,11 @@ async def chat_start() -> None:
     """This method runs when a user opens a new chat session"""
 
     query_db = open_vector_db_for_querying(
-        provider=VectordbProviders.MONGODB_ATLAS,
+        provider=VectordbProviders(toml_config["general"]["vectordb_provider"]),
         collection_name=toml_config["general"]["collection_name"],
         embed_function=create_embeddings_function(
-            provider=EmbeddingsProviders.OPENAI, show_progress=False
+            provider=EmbeddingsProviders(toml_config["general"]["embeddings_provider"]),
+            show_progress=False,
         ),
     )
     openai = ChatOpenAI(
