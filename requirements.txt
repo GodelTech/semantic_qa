@@ -12,4 +12,5 @@ redis
 pgvector
 psycopg2-binary
 pymongo
+elasticsearch
 chainlit
