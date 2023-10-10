@@ -529,6 +529,7 @@ if __name__ == "__main__":
     embeddings_alternative = embed_creator.embed_query(QUERY_ALT)
 
     # Print out the QUERY_STR embeddings, truncating their decimal digits
+    print(f"Embeddings for query '{QUERY_STR}':")
     pprint(
         [f"{embed:+.8f}" for embed in embeddings_english],
         compact=True,
@@ -539,23 +540,30 @@ if __name__ == "__main__":
     # Show the semantic similarity between the sentences,
     # calculated as the cosine distance between their embeddings
     similarity = get_cosine_similarity(embeddings_english, embeddings_alternative)
+    print(f"Query 1 '{QUERY_STR}'")
+    print(f"Query 2 '{QUERY_ALT}'")
     print(f"similarity: {similarity}")
     print("-" * 70)
     similarity = get_cosine_similarity(embeddings_english, embeddings_spanish)
+    print(f"Query 1 '{QUERY_STR}'")
+    print(f"Query 2 '{QUERY_ESP}'")
     print(f"similarity: {similarity}")
     print("-" * 70)
 
     # Return the top k relevant docs
+    print(f"Most relevant documents and similarity scores for query '{QUERY_STR}':")
     matches = output_relevant_docs(query_db, QUERY_STR, 3)
     pprint(matches)
     print("-" * 70)
 
     # Answer the question using default langchain prompt
+    print("Answer to query using default chat prompt:")
     answer = run_qa_chain(openai_model, query_db, QUERY_STR, 3)
     print(answer)
     print("-" * 70)
 
     # Customise the prompt and retrieval parameters
+    print("Answer to query with custom prompt and similarity search parameters in config.toml:")
     answer = run_custom_retrieval_chain(openai_model, query_db, QUERY_STR)
     print(answer)
     print("-" * 70)
