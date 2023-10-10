@@ -123,7 +123,7 @@ def enrich_source_documents(documents: list[Document]) -> list[Document]:
         list[Document]: enriched docs
     """
     for document in tqdm.tqdm(documents):
-        # Generic enrichment, adding modification time and file size
+        # Generic enrichment
         path = pathlib.Path(document.metadata["source"])
         m_time = datetime.datetime.fromtimestamp(path.stat().st_mtime)
         document.metadata["file_mod_time"] = m_time.strftime("%Y-%m-%d %H:%M:%S")
@@ -145,7 +145,7 @@ def enrich_chunked_documents(documents: list[Document]) -> list[Document]:
         list[Document]: enriched, chunked docs
     """
     for document in tqdm.tqdm(documents):
-        # Generic enrichment, adding modification time and file size
+        # Generic enrichment
         document.metadata["chunk_length"] = len(document.page_content)
         # Additional application-specific enrichment, if needed
     return documents

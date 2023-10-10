@@ -15,13 +15,13 @@ source_dirs = ["corpus"]
 glob = "**/[!.]*.*"
 
 [splitter]
-# Target number of tokens per document chunk 
+# Maximum size of document chunks to return
 chunk_size = 1000
-# Target number of overlap tokens 
+# Overlap in characters between chunks
 chunk_overlap = 20
 
 [search_params]
-# Can be "similarity" (default), "similarity_score_threshold", or "mmr" (Maximal Marginal Relevance algorithm
+# Can be "similarity" (default), "similarity_score_threshold", or "mmr" Maximal Marginal Relevance algorithm
 # which optimises for BOTH similarity to querystring AND diversity amongst selected documents
 algorithm = "similarity"
 # Number of documents to retrieve on "similarity" search
@@ -60,7 +60,7 @@ persistence_root_dir = "chroma_db"
 url = "redis://localhost:6379"
 
 [pgvector]
-# sqlalchemy-style connection string .Don't write it here, put it in non-versioned secrets.toml
+# sqlalchemy-style connection string. Don't write it here, put it in non-versioned secrets.toml
 connection_string = "postgresql+psycopg2://vector_user:vector_pass@localhost:5432/vectors"
 
 [pinecone]
