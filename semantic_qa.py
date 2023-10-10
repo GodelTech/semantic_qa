@@ -8,6 +8,7 @@ import pathlib
 import hashlib
 from typing import cast, Any, Optional
 from pprint import pprint
+import argparse
 import numpy as np
 
 import tqdm
@@ -476,13 +477,20 @@ def get_cosine_similarity(a: list[float], b: list[float]) -> float:
 
 
 if __name__ == "__main__":
-    REBUILD = True  #  Rebuild doc embeddings?
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--rebuild",
+        action="store_true",
+        help="Rebuild the vector DB from the source documents",
+    )
+    args = parser.parse_args()
+
     vectordb_provider = VectordbProviders(toml_config["general"]["vectordb_provider"])
     embeddings_provider = EmbeddingsProviders(
         toml_config["general"]["embeddings_provider"]
     )
 
-    if REBUILD:
+    if args.rebuild:
         create_vector_db_from_docs(
             provider=vectordb_provider,
             collection_name=toml_config["general"]["collection_name"],
@@ -563,7 +571,7 @@ if __name__ == "__main__":
     print("-" * 70)
 
     # Customise the prompt and retrieval parameters
-    print("Answer to query with custom prompt and similarity search parameters in config.toml:")
+    print("Answer with custom prompt and similarity search parameters in config.toml:")
     answer = run_custom_retrieval_chain(openai_model, query_db, QUERY_STR)
     print(answer)
     print("-" * 70)
