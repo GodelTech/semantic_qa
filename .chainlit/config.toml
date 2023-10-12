@@ -43,9 +43,9 @@ github = "https://github.com/GodelTech/semantic_qa"
     #paper = "#FFFFFF"
 
     [UI.theme.light.primary]
-        #main = "#F80061"
-        #dark = "#980039"
-        #light = "#FFE7EB"
+        main = "#002856"
+        dark = "#002856"
+        light = "#cce4ff"
 
 # Override default MUI dark theme. (Check theme.ts)
 [UI.theme.dark]
@@ -53,7 +53,7 @@ github = "https://github.com/GodelTech/semantic_qa"
     #paper = "#FFFFFF"
 
     [UI.theme.dark.primary]
-        #main = "#F80061"
+        main = "#66adff"
         #dark = "#980039"
         #light = "#FFE7EB"
 
