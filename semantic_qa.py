@@ -22,21 +22,19 @@ from langchain.text_splitter import (
 )
 
 from langchain.embeddings.base import Embeddings
-from langchain.embeddings import (
-    OpenAIEmbeddings,
+from langchain.embeddings.openai import OpenAIEmbeddings
+from langchain.embeddings.huggingface import (
     HuggingFaceEmbeddings,
     HuggingFaceInstructEmbeddings,
 )
 
 from langchain.vectorstores.base import VectorStore
-from langchain.vectorstores import (
-    Chroma,
-    Redis,
-    PGVector,
-    Pinecone,
-    MongoDBAtlasVectorSearch,  # Broken in langchain>=0.0.305 for MongoDB<7
-    ElasticsearchStore,
-)
+from langchain.vectorstores.chroma import Chroma
+from langchain.vectorstores.redis import Redis
+from langchain.vectorstores.pgvector import PGVector
+from langchain.vectorstores.pinecone import Pinecone
+from langchain.vectorstores.mongodb_atlas import MongoDBAtlasVectorSearch
+from langchain.vectorstores.elasticsearch import ElasticsearchStore
 
 from langchain.chat_models import ChatOpenAI
 from langchain.prompts import PromptTemplate
