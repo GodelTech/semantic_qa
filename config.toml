@@ -3,8 +3,8 @@
 collection_name = "docs"
 # Used when generating embeddings with a locally downloaded model, e.g. Hugging Face or Instructor
 default_device = "cuda"
-# Choose amongst: "chromadb", "redis", "pgvector", "pinecone", "mongodb_atlas", "elasticsearch"
-vectordb_provider = "redis"
+# Choose amongst: "chromadb", "redis", "pgvector", "pinecone", "mongodb_atlas", "elasticsearch", "neo4j"
+vectordb_provider = "neo4j"
 # Choose amongst: "openai", "huggingface", "instructor"
 embeddings_provider = "instructor"
 
@@ -78,3 +78,11 @@ db_name = "vectors"
 [elasticsearch]
 # Don't write it here, put it in non-versioned secrets.toml
 url="http://elastic:my_secret_pwd@localhost:9200"
+
+[neo4j]
+# URL to access the Neo4j instance
+url="neo4j://localhost:7687"
+# Don't write it here, put it in non-versioned secrets.toml
+username="USERNAME"
+# Don't write it here, put it in non-versioned secrets.toml
+password="PASSWORD"

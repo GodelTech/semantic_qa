@@ -48,6 +48,7 @@ The demo currently supports the following vector stores:
  * [Pinecone](https://www.pinecone.io/). [Set-up instructions](vector_stores_howtos/pinecone.md)
  * [MongoDB Atlas](https://www.mongodb.com/atlas/database). [Set-up instructions](vector_stores_howtos/mongodb_atlas.md)
  * [Elasticsearch](https://www.elastic.co/elasticsearch/vector-database). [Set-up instructions](vector_stores_howtos/elasticsearch.md)
+ * [Neo4j](https://neo4j.com/docs/cypher-manual/current/indexes-for-vector-search/). [Set-up instructions](vector_stores_howtos/neoj4.md)
 
 The first one uses file-based SQLite for storage and does not require any work. All the others need some set up, detailed in the links above.
 

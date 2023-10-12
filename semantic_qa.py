@@ -35,6 +35,7 @@ from langchain.vectorstores.pgvector import PGVector
 from langchain.vectorstores.pinecone import Pinecone
 from langchain.vectorstores.mongodb_atlas import MongoDBAtlasVectorSearch
 from langchain.vectorstores.elasticsearch import ElasticsearchStore
+from langchain.vectorstores.neo4j_vector import Neo4jVector
 
 from langchain.chat_models import ChatOpenAI
 from langchain.prompts import PromptTemplate
@@ -58,6 +59,7 @@ class VectordbProviders(Enum):
     PINECONE = "pinecone"
     MONGODB_ATLAS = "mongodb_atlas"
     ELASTICSEARCH = "elasticsearch"
+    NEO4J = "neo4j"
 
 
 class EmbeddingsProviders(Enum):
@@ -214,7 +216,8 @@ def _fix_vector_db(provider: VectordbProviders) -> Optional[Any]:
     """Takes care of specific initialisation and fixing
 
     Args:
-        provider (VectordbProviders): (OPENAI|HUGGINGFACE|INSTRUCTOR|MONGODB_ATLAS|ELASTICSEARCH)
+        provider (VectordbProviders): One of OPENAI, HUGGINGFACE, INSTRUCTOR, MONGODB_ATLAS,
+            ELASTICSEARCH, NEO4J
 
     Returns:
         Optional[Any]: in most cases None, but MongoDBAtlasVectorSearch needs a MongoClient
@@ -255,7 +258,8 @@ def create_vector_db_from_docs(
     """Creates or rebuilds an embeddings vector store, populated with document and embeddings
 
     Args:
-        provider (VectordbProviders): (OPENAI|HUGGINGFACE|INSTRUCTOR|MONGODB_ATLAS|ELASTICSEARCH)
+        provider (VectordbProviders): One of OPENAI, HUGGINGFACE, INSTRUCTOR, MONGODB_ATLAS,
+            ELASTICSEARCH, NEO4J
         collection_name (str): name given to the document collection
         documents (list[Document]): list of documents to store and embed
         embed_function (Embeddings): embeddings generator function
@@ -318,6 +322,15 @@ def create_vector_db_from_docs(
                 distance_strategy="COSINE",
             )
 
+        case VectordbProviders.NEO4J:
+            vectordb = Neo4jVector.from_documents(
+                documents=documents,
+                embedding=embed_function,
+                url=toml_config["neo4j"]["url"],
+                username=toml_config["neo4j"]["username"],
+                password=toml_config["neo4j"]["password"],
+            )
+
     return vectordb
 
 
@@ -327,7 +340,8 @@ def open_vector_db_for_querying(
     """Opens an existing embeddings vector store
 
     Args:
-        provider (VectordbProviders): (OPENAI|HUGGINGFACE|INSTRUCTOR|MONGODB_ATLAS|ELASTICSEARCH)
+        provider (VectordbProviders): One of OPENAI, HUGGINGFACE, INSTRUCTOR, MONGODB_ATLAS,
+            ELASTICSEARCH, NEO4J
         collection_name (str): name of the document collection, same as when it was created
         embed_function (Embeddings): embeddings generator function
 
@@ -381,6 +395,14 @@ def open_vector_db_for_querying(
                 embedding=embed_function,
                 index_name=collection_name,
                 es_url=toml_config["elasticsearch"]["url"],
+            )
+
+        case VectordbProviders.NEO4J:
+            vectordb = Neo4jVector(
+                embedding=embed_function,
+                url=toml_config["neo4j"]["url"],
+                username=toml_config["neo4j"]["username"],
+                password=toml_config["neo4j"]["password"],
             )
 
     return vectordb
