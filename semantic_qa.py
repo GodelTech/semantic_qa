@@ -6,12 +6,11 @@ from enum import Enum
 import datetime
 import pathlib
 import hashlib
-import joblib
 from typing import cast, Any, Optional
 from pprint import pprint
 import argparse
 import numpy as np
-
+import joblib  # type: ignore
 import tqdm
 
 from langchain.schema import Document
@@ -523,15 +522,15 @@ if __name__ == "__main__":
     )
 
     if toml_config["debug"]["force_rebuild"] or args.rebuild:
-        documents: list[Document] = []
+        chunked_documents: list[Document] = []
         if toml_config["debug"]["persist_chunked_docs"]:
             try:
-                documents = joblib.load("chunked_docs.pkl")
-            except:
-                documents = []
+                chunked_documents = joblib.load("chunked_docs.pkl")
+            except Exception:  # pylint: disable=broad-exception-caught
+                chunked_documents = []
 
-        if not documents:
-            documents = enrich_chunked_documents(
+        if not chunked_documents:
+            chunked_documents = enrich_chunked_documents(
                 split_docs(
                     enrich_source_documents(
                         load_docs(
@@ -542,12 +541,12 @@ if __name__ == "__main__":
                 )
             )
             if toml_config["debug"]["persist_chunked_docs"]:
-                joblib.dump(documents, "chunked_docs.pkl", compress=True)
+                joblib.dump(chunked_documents, "chunked_docs.pkl", compress=True)
 
         create_vector_db_from_docs(
             provider=vectordb_provider,
             collection_name=toml_config["general"]["collection_name"],
-            documents=documents,
+            documents=chunked_documents,
             embed_function=create_embeddings_function(
                 provider=embeddings_provider,
                 show_progress=True,
