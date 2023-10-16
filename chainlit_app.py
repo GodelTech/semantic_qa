@@ -13,14 +13,15 @@ from chainlit import (
     user_session,
     Message,
 )
-from langchain.chat_models import ChatOpenAI
 from semantic_qa import (
     toml_config,
     VectordbProviders,
     EmbeddingsProviders,
+    ChatModelProviders,
     open_vector_db_for_querying,
     create_embeddings_function,
     run_custom_retrieval_chain,
+    create_chat_model,
 )
 
 
@@ -36,13 +37,11 @@ async def chat_start() -> None:
             show_progress=False,
         ),
     )
-    openai = ChatOpenAI(
-        model=toml_config["openai"]["chat_model"],
-        openai_api_key=toml_config["openai"]["api_key"],
-        temperature=toml_config["openai"]["temperature"],
+    model = create_chat_model(
+        ChatModelProviders(toml_config["general"]["chat_model_provider"])
     )
     user_session.set("query_db", query_db)
-    user_session.set("openai_model", openai)
+    user_session.set("chat_model", model)
     await Message("Welcome to our chat. How can I help you?").send()
 
 
@@ -55,7 +54,7 @@ async def message_received(message_content: str, _message_id: str) -> None:
         _message_id (str): message id
     """
     answer = run_custom_retrieval_chain(
-        user_session.get("openai_model"),
+        user_session.get("chat_model"),
         user_session.get("query_db"),
         message_content,
     )

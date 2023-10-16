@@ -7,6 +7,8 @@ default_device = "cuda"
 vectordb_provider = "chromadb"
 # Choose amongst: "openai", "huggingface", "instructor", "ollama"
 embeddings_provider = "instructor"
+# Choose amongst: "openai", "fireworks"
+chat_model_provider = "openai"
 
 [debug]
 # Force rebuild mode, regardless of command line switches
@@ -52,7 +54,21 @@ api_key = "API-KEY"
 chat_model = "gpt-3.5-turbo"
 # Between 0 and 1, governs the randomness (and thus the creativity) of the responses
 temperature = 0.7
-# Prompt template fed to the GPT model
+
+[fireworks]
+# Don't write it here, put it in non-versioned secrets.toml
+api_key = "API-KEY"
+# See supported list: https://app.fireworks.ai/models
+chat_model = "accounts/fireworks/models/llama-v2-7b-chat"
+# Between 0 and 1, governs the randomness (and thus the creativity) of the responses
+temperature = 0.7
+# Lowering top_p will narrow the model’s token selection to likelier tokens
+top_p = 0.9
+# maximum number of tokens in the response
+max_tokens = 1024
+
+[chat]
+# Prompt template fed to the LLM chat model
 prompt_template = """You are an AI assistant that answers questions about our company's policy. 
 Use the following pieces of context to answer the question at the end.
 If you don't know the answer, just say that you don't know, don't try to make up an answer.

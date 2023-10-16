@@ -38,7 +38,10 @@ from langchain.vectorstores.mongodb_atlas import MongoDBAtlasVectorSearch
 from langchain.vectorstores.elasticsearch import ElasticsearchStore
 from langchain.vectorstores.neo4j_vector import Neo4jVector
 
-from langchain.chat_models import ChatOpenAI
+from langchain.chat_models.base import BaseChatModel
+from langchain.chat_models.openai import ChatOpenAI
+from langchain.chat_models.fireworks import ChatFireworks
+
 from langchain.prompts import PromptTemplate
 from langchain.chains.question_answering import load_qa_chain
 from langchain.chains import RetrievalQA
@@ -70,6 +73,13 @@ class EmbeddingsProviders(Enum):
     HUGGINGFACE = "huggingface"
     INSTRUCTOR = "instructor"
     OLLAMA = "ollama"
+
+
+class ChatModelProviders(Enum):
+    """Chat model providers we currently support"""
+
+    OPENAI = "openai"
+    FIREWORKS = "fireworks"
 
 
 def read_config() -> dict:
@@ -419,6 +429,35 @@ def open_vector_db_for_querying(
     return vectordb
 
 
+def create_chat_model(provider: ChatModelProviders) -> BaseChatModel:
+    """Creates the chat model to elaborate the response based on the search results
+
+    Args:
+        provider (ChatModelProviders): One of OPENAI, FIREWORKS, OLLAMA
+
+    Returns:
+        BaseChatModel: The chat model
+    """
+    model: BaseChatModel
+    match provider:
+        case ChatModelProviders.OPENAI:
+            model = ChatOpenAI(
+                model=toml_config["openai"]["chat_model"],
+                openai_api_key=toml_config["openai"]["api_key"],
+                temperature=toml_config["openai"]["temperature"],
+            )
+
+        case ChatModelProviders.FIREWORKS:
+            fireworks_model_params = toml_config["fireworks"]
+            model = ChatFireworks(
+                model=fireworks_model_params.pop("chat_model"),
+                fireworks_api_key=fireworks_model_params.pop("api_key"),
+                model_kwargs=fireworks_model_params,
+            )
+
+    return model
+
+
 def output_relevant_docs(
     vector_db: VectorStore, query_str: str, k: int
 ) -> list[tuple[Document, float]]:
@@ -436,12 +475,12 @@ def output_relevant_docs(
 
 
 def run_qa_chain(
-    llm: ChatOpenAI, vector_db: VectorStore, query_str: str, k: int
+    llm: BaseChatModel, vector_db: VectorStore, query_str: str, k: int
 ) -> Any:
     """Runs a basic QA chain using lanchain and openai, with a default prompt
 
     Args:
-        llm (ChatOpenAI): an OpenAI LLM instance
+        llm (BaseChatModel): an LLM instance
         vector_db (VectorStore): vector store to query into
         query_str (str): query string
         k (int): number of results to return
@@ -459,12 +498,12 @@ def run_qa_chain(
 
 
 def run_custom_retrieval_chain(
-    llm: ChatOpenAI, vector_db: VectorStore, query_str: str
+    llm: BaseChatModel, vector_db: VectorStore, query_str: str
 ) -> Any:
     """Runs a custom QA chain using lanchain and openai, allowing us to tweak parameters
 
     Args:
-        llm (ChatOpenAI): an OpenAI LLM instance
+        llm (BaseChatModel): an LLM instance
         vector_db (VectorStore): vector store to query into
         query_str (str): query string
 
@@ -482,7 +521,7 @@ def run_custom_retrieval_chain(
         ),
         chain_type_kwargs={
             "prompt": PromptTemplate(
-                template=toml_config["openai"]["prompt_template"],
+                template=toml_config["chat"]["prompt_template"],
                 input_variables=["context", "question"],
             )
         },
@@ -519,6 +558,9 @@ if __name__ == "__main__":
     vectordb_provider = VectordbProviders(toml_config["general"]["vectordb_provider"])
     embeddings_provider = EmbeddingsProviders(
         toml_config["general"]["embeddings_provider"]
+    )
+    chat_model_provider = ChatModelProviders(
+        toml_config["general"]["chat_model_provider"]
     )
 
     if toml_config["debug"]["force_rebuild"] or args.rebuild:
@@ -569,11 +611,8 @@ if __name__ == "__main__":
         collection_name=toml_config["general"]["collection_name"],
         embed_function=embed_creator,
     )
-    openai_model = ChatOpenAI(
-        model=toml_config["openai"]["chat_model"],
-        openai_api_key=toml_config["openai"]["api_key"],
-        temperature=toml_config["openai"]["temperature"],
-    )
+
+    chat_model = create_chat_model(chat_model_provider)
 
     embeddings_english = embed_creator.embed_query(QUERY_STR)
     embeddings_spanish = embed_creator.embed_query(QUERY_ESP)
@@ -609,12 +648,12 @@ if __name__ == "__main__":
 
     # Answer the question using default langchain prompt
     print("Answer to query using default chat prompt:")
-    answer = run_qa_chain(openai_model, query_db, QUERY_STR, 3)
+    answer = run_qa_chain(chat_model, query_db, QUERY_STR, 3)
     print(answer)
     print("-" * 70)
 
     # Customise the prompt and retrieval parameters
     print("Answer with custom prompt and similarity search parameters in config.toml:")
-    answer = run_custom_retrieval_chain(openai_model, query_db, QUERY_STR)
+    answer = run_custom_retrieval_chain(chat_model, query_db, QUERY_STR)
     print(answer)
     print("-" * 70)
