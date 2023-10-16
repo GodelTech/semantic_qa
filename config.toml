@@ -5,7 +5,7 @@ collection_name = "docs"
 default_device = "cuda"
 # Choose amongst: "chromadb", "redis", "pgvector", "pinecone", "mongodb_atlas", "elasticsearch", "neo4j"
 vectordb_provider = "neo4j"
-# Choose amongst: "openai", "huggingface", "instructor"
+# Choose amongst: "openai", "huggingface", "instructor", "ollama"
 embeddings_provider = "instructor"
 
 [docs]
@@ -77,12 +77,12 @@ db_name = "vectors"
 
 [elasticsearch]
 # Don't write it here, put it in non-versioned secrets.toml
-url="http://elastic:my_secret_pwd@localhost:9200"
+url = "http://elastic:my_secret_pwd@localhost:9200"
 
 [neo4j]
 # URL to access the Neo4j instance
-url="neo4j://localhost:7687"
+url = "neo4j://localhost:7687"
 # Don't write it here, put it in non-versioned secrets.toml
-username="USERNAME"
+username = "USERNAME"
 # Don't write it here, put it in non-versioned secrets.toml
-password="PASSWORD"
+password = "PASSWORD"

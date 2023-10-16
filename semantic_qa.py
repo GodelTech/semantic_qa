@@ -27,6 +27,7 @@ from langchain.embeddings.huggingface import (
     HuggingFaceEmbeddings,
     HuggingFaceInstructEmbeddings,
 )
+from langchain.embeddings.ollama import OllamaEmbeddings
 
 from langchain.vectorstores.base import VectorStore
 from langchain.vectorstores.chroma import Chroma
@@ -68,6 +69,7 @@ class EmbeddingsProviders(Enum):
     OPENAI = "openai"
     HUGGINGFACE = "huggingface"
     INSTRUCTOR = "instructor"
+    OLLAMA = "ollama"
 
 
 def read_config() -> dict:
@@ -177,7 +179,7 @@ def create_embeddings_function(
     """Creates an embeddings generator function
 
     Args:
-        provider (EmbeddingsProviders): one of OPENAI, HUGGINGFACE, INSTRUCTOR
+        provider (EmbeddingsProviders): one of OPENAI, HUGGINGFACE, INSTRUCTOR, OLLAMA
         show_progress (bool): whether to show a progress bar when generating embeddings
 
     Returns:
@@ -207,6 +209,14 @@ def create_embeddings_function(
                 model_name="hkunlp/instructor-large",  # Dimensions = 768
                 model_kwargs={"device": toml_config["general"]["default_device"]},
                 encode_kwargs={"show_progress_bar": show_progress},
+            )
+
+        case EmbeddingsProviders.OLLAMA:
+            embeddings = OllamaEmbeddings(  # type: ignore[call-arg]
+                base_url="http://localhost:11434",
+                # model="mistral",  # VERY resource intensive
+                # model="llama2",  # VERY resource intensive
+                model="orca-mini",  # Dimensions = 3200,
             )
 
     return embeddings
