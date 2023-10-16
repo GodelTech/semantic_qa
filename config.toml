@@ -4,9 +4,21 @@ collection_name = "docs"
 # Used when generating embeddings with a locally downloaded model, e.g. Hugging Face or Instructor
 default_device = "cuda"
 # Choose amongst: "chromadb", "redis", "pgvector", "pinecone", "mongodb_atlas", "elasticsearch", "neo4j"
-vectordb_provider = "neo4j"
+vectordb_provider = "chromadb"
 # Choose amongst: "openai", "huggingface", "instructor", "ollama"
 embeddings_provider = "instructor"
+
+[debug]
+# Force rebuild mode, regardless of command line switches
+force_rebuild = false
+# Sample some documents from the corpus, rather than full rebuild
+corpus_sample_size = -1
+# Randomise the corpus sample?
+corpus_randomize_sample = true
+# Random seed for the corpus sample
+corpus_sample_seed = 42
+# Pickle the chunked docs, to avoid having to iterate over the corpus every time
+persist_chunked_docs = false
 
 [docs]
 # List of directories where source documents live

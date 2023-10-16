@@ -167,3 +167,4 @@ cython_debug/
 # Secrets, hidden files
 /secrets.toml
 /.chainlit/.langchain.db
+chunked_docs.pkl

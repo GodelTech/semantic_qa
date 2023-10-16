@@ -6,6 +6,7 @@ from enum import Enum
 import datetime
 import pathlib
 import hashlib
+import joblib
 from typing import cast, Any, Optional
 from pprint import pprint
 import argparse
@@ -107,9 +108,10 @@ def load_docs(directories: list[str], glob: str) -> list[Document]:
             show_progress=True,
             use_multithreading=True,
             glob=glob,
-            # sample_size=20,
-            # randomize_sample=True,
-            # sample_seed=42,
+            # debug settings
+            sample_size=toml_config["debug"]["corpus_sample_size"],
+            randomize_sample=toml_config["debug"]["corpus_randomize_sample"],
+            sample_seed=toml_config["debug"]["corpus_sample_seed"],
         )
         documents += loader.load()
     return documents
@@ -520,11 +522,16 @@ if __name__ == "__main__":
         toml_config["general"]["embeddings_provider"]
     )
 
-    if args.rebuild:
-        create_vector_db_from_docs(
-            provider=vectordb_provider,
-            collection_name=toml_config["general"]["collection_name"],
-            documents=enrich_chunked_documents(
+    if toml_config["debug"]["force_rebuild"] or args.rebuild:
+        documents: list[Document] = []
+        if toml_config["debug"]["persist_chunked_docs"]:
+            try:
+                documents = joblib.load("chunked_docs.pkl")
+            except:
+                documents = []
+
+        if not documents:
+            documents = enrich_chunked_documents(
                 split_docs(
                     enrich_source_documents(
                         load_docs(
@@ -533,7 +540,14 @@ if __name__ == "__main__":
                         )
                     )
                 )
-            ),
+            )
+            if toml_config["debug"]["persist_chunked_docs"]:
+                joblib.dump(documents, "chunked_docs.pkl", compress=True)
+
+        create_vector_db_from_docs(
+            provider=vectordb_provider,
+            collection_name=toml_config["general"]["collection_name"],
+            documents=documents,
             embed_function=create_embeddings_function(
                 provider=embeddings_provider,
                 show_progress=True,
