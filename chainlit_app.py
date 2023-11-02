@@ -46,7 +46,7 @@ async def chat_start() -> None:
 
 
 @on_message
-async def message_received(message_content: str, _message_id: str) -> None:
+async def message_received(rcvd_message: Message) -> None:
     """This method runs every time a user sends a chat message
 
     Args:
@@ -56,6 +56,6 @@ async def message_received(message_content: str, _message_id: str) -> None:
     answer = run_custom_retrieval_chain(
         user_session.get("chat_model"),
         user_session.get("query_db"),
-        message_content,
+        rcvd_message.content,
     )
     await Message(content=answer).send()
