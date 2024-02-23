@@ -7,7 +7,7 @@ default_device = "cuda"
 vectordb_provider = "chromadb"
 # Choose amongst: "openai", "huggingface", "instructor", "ollama"
 embeddings_provider = "instructor"
-# Choose amongst: "openai", "fireworks"
+# Choose amongst: "openai", "fireworks", "anthropic"
 chat_model_provider = "openai"
 
 [debug]
@@ -51,7 +51,15 @@ k = 4
 # Don't write it here, put it in non-versioned secrets.toml
 api_key = "API-KEY"
 # Don't try to use "gpt-4" unless you've prepaid or are in the premium tier
-chat_model = "gpt-3.5-turbo"
+chat_model = "gpt-3.5-turbo-0125"
+# Between 0 and 1, governs the randomness (and thus the creativity) of the responses
+temperature = 0.7
+
+[anthropic]
+# Don't write it here, put it in non-versioned secrets.toml
+api_key = "API-KEY"
+# Choose from the ones available at https://docs.anthropic.com/claude/reference/selecting-a-model
+chat_model = "claude-2.1"
 # Between 0 and 1, governs the randomness (and thus the creativity) of the responses
 temperature = 0.7
 

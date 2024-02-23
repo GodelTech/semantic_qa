@@ -1,10 +1,11 @@
 tomli
-langchain>=0.0.312
+langchain>=0.1.0
 openai
+langchain_openai
 tiktoken
 unstructured[all-docs]
 tqdm
-sentence-transformers
+sentence-transformers==2.2.2
 InstructorEmbedding
 chromadb
 pinecone-client
@@ -15,3 +16,4 @@ pymongo
 elasticsearch
 chainlit
 fireworks-ai
+anthropic

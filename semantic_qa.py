@@ -14,7 +14,6 @@ import joblib  # type: ignore
 import tqdm
 
 from langchain.schema import Document
-from langchain.document_loaders import DirectoryLoader
 
 from langchain.text_splitter import (
     TextSplitter,
@@ -22,7 +21,6 @@ from langchain.text_splitter import (
 )
 
 from langchain.embeddings.base import Embeddings
-from langchain.embeddings.openai import OpenAIEmbeddings
 from langchain.embeddings.huggingface import (
     HuggingFaceEmbeddings,
     HuggingFaceInstructEmbeddings,
@@ -39,12 +37,16 @@ from langchain.vectorstores.elasticsearch import ElasticsearchStore
 from langchain.vectorstores.neo4j_vector import Neo4jVector
 
 from langchain.chat_models.base import BaseChatModel
-from langchain.chat_models.openai import ChatOpenAI
 from langchain.chat_models.fireworks import ChatFireworks
+from langchain.chat_models.anthropic import ChatAnthropic
 
 from langchain.prompts import PromptTemplate
 from langchain.chains.question_answering import load_qa_chain
 from langchain.chains import RetrievalQA
+
+from langchain_openai import ChatOpenAI
+from langchain_openai import OpenAIEmbeddings
+from langchain_community.document_loaders import DirectoryLoader
 
 from pydantic.v1.utils import deep_update
 
@@ -80,6 +82,7 @@ class ChatModelProviders(Enum):
 
     OPENAI = "openai"
     FIREWORKS = "fireworks"
+    ANTHROPIC = "anthropic"
 
 
 def read_config() -> dict:
@@ -201,7 +204,7 @@ def create_embeddings_function(
         case EmbeddingsProviders.OPENAI:
             embeddings = OpenAIEmbeddings(
                 model="text-embedding-ada-002",  # Dimensions = 1536
-                openai_api_key=toml_config["openai"]["api_key"],
+                api_key=toml_config["openai"]["api_key"],
                 show_progress_bar=show_progress,
             )
 
@@ -209,15 +212,17 @@ def create_embeddings_function(
             embeddings = HuggingFaceEmbeddings(
                 # model_name="gtr-t5-large",  # Dimensions = 768
                 # model_name="all-mpnet-base-v2",  # Dimensions = 768
+                # model_name="all-MiniLM-L12-v2",  # Dimensions = 384
                 model_name="all-MiniLM-L6-v2",  # Dimensions = 384
                 model_kwargs={"device": toml_config["general"]["default_device"]},
-                encode_kwargs={"show_progress_bar": show_progress},
+                show_progress=show_progress,
             )
 
         case EmbeddingsProviders.INSTRUCTOR:
             embeddings = HuggingFaceInstructEmbeddings(
                 # model_name="hkunlp/instructor-base",  # Dimensions = 768
                 model_name="hkunlp/instructor-large",  # Dimensions = 768
+                # model_name="hkunlp/instructor-xl",  # Dimensions = 768
                 model_kwargs={"device": toml_config["general"]["default_device"]},
                 encode_kwargs={"show_progress_bar": show_progress},
             )
@@ -433,7 +438,7 @@ def create_chat_model(provider: ChatModelProviders) -> BaseChatModel:
     """Creates the chat model to elaborate the response based on the search results
 
     Args:
-        provider (ChatModelProviders): One of OPENAI, FIREWORKS, OLLAMA
+        provider (ChatModelProviders): One of OPENAI, FIREWORKS, ANTHROPIC
 
     Returns:
         BaseChatModel: The chat model
@@ -443,7 +448,7 @@ def create_chat_model(provider: ChatModelProviders) -> BaseChatModel:
         case ChatModelProviders.OPENAI:
             model = ChatOpenAI(
                 model=toml_config["openai"]["chat_model"],
-                openai_api_key=toml_config["openai"]["api_key"],
+                api_key=toml_config["openai"]["api_key"],
                 temperature=toml_config["openai"]["temperature"],
             )
 
@@ -453,6 +458,13 @@ def create_chat_model(provider: ChatModelProviders) -> BaseChatModel:
                 model=fireworks_model_params.pop("chat_model"),
                 fireworks_api_key=fireworks_model_params.pop("api_key"),
                 model_kwargs=fireworks_model_params,
+            )
+
+        case ChatModelProviders.ANTHROPIC:
+            model = ChatAnthropic(
+                model_name=toml_config["anthropic"]["chat_model"],
+                anthropic_api_key=toml_config["anthropic"]["api_key"],
+                temperature=toml_config["anthropic"]["temperature"],
             )
 
     return model
@@ -492,7 +504,7 @@ def run_qa_chain(
         llm,
         chain_type="stuff",
         verbose=True,
-    ).run(
+    ).invoke(
         input_documents=vector_db.similarity_search(query_str, k=k), question=query_str
     )
 
@@ -525,7 +537,7 @@ def run_custom_retrieval_chain(
                 input_variables=["context", "question"],
             )
         },
-    ).run(query_str)
+    ).invoke(query_str)
 
 
 def get_cosine_similarity(a: list[float], b: list[float]) -> float:
