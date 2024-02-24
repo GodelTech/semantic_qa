@@ -500,12 +500,19 @@ def run_qa_chain(
     Returns:
         a verbose response, showing the chain steps
     """
-    return load_qa_chain(
-        llm,
-        chain_type="stuff",
-        verbose=True,
-    ).invoke(
-        input_documents=vector_db.similarity_search(query_str, k=k), question=query_str
+    return (
+        load_qa_chain(
+            llm,
+            chain_type="stuff",
+            verbose=True,
+        )
+        .invoke(
+            {
+                "input_documents": vector_db.similarity_search(query_str, k=k),
+                "question": query_str,
+            }
+        )
+        .get("output_text", "")
     )
 
 
@@ -523,21 +530,25 @@ def run_custom_retrieval_chain(
         a response that is heavily dependent on the prompt and search_kwargs
     """
     search_params = dict(toml_config["search_params"])
-    return RetrievalQA.from_chain_type(
-        llm,
-        chain_type="stuff",
-        # verbose=True,
-        retriever=vector_db.as_retriever(
-            search_type=search_params.pop("algorithm"),
-            search_kwargs=search_params,
-        ),
-        chain_type_kwargs={
-            "prompt": PromptTemplate(
-                template=toml_config["chat"]["prompt_template"],
-                input_variables=["context", "question"],
-            )
-        },
-    ).invoke(query_str)
+    return (
+        RetrievalQA.from_chain_type(
+            llm,
+            chain_type="stuff",
+            # verbose=True,
+            retriever=vector_db.as_retriever(
+                search_type=search_params.pop("algorithm"),
+                search_kwargs=search_params,
+            ),
+            chain_type_kwargs={
+                "prompt": PromptTemplate(
+                    template=toml_config["chat"]["prompt_template"],
+                    input_variables=["context", "question"],
+                )
+            },
+        )
+        .invoke({"query": query_str})
+        .get("result", "")
+    )
 
 
 def get_cosine_similarity(a: list[float], b: list[float]) -> float:
