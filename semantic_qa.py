@@ -30,23 +30,26 @@ from langchain.embeddings.ollama import OllamaEmbeddings
 from langchain.vectorstores.base import VectorStore
 from langchain.vectorstores.chroma import Chroma
 from langchain.vectorstores.redis import Redis
-from langchain.vectorstores.pgvector import PGVector
-from langchain.vectorstores.pinecone import Pinecone
-from langchain.vectorstores.mongodb_atlas import MongoDBAtlasVectorSearch
-from langchain.vectorstores.elasticsearch import ElasticsearchStore
+
 from langchain.vectorstores.neo4j_vector import Neo4jVector
+from langchain.vectorstores.azure_cosmos_db import AzureCosmosDBVectorSearch
 
 from langchain.chat_models.base import BaseChatModel
-from langchain.chat_models.fireworks import ChatFireworks
-from langchain.chat_models.anthropic import ChatAnthropic
 
 from langchain.prompts import PromptTemplate
 from langchain.chains.question_answering import load_qa_chain
-from langchain.chains import RetrievalQA
+from langchain.chains.retrieval_qa.base import RetrievalQA
 
+from langchain_community.document_loaders.directory import DirectoryLoader
+
+from langchain_postgres import PGVector
+from langchain_elasticsearch import ElasticsearchStore
+from langchain_pinecone import PineconeVectorStore
+from langchain_mongodb import MongoDBAtlasVectorSearch
+from langchain_fireworks import ChatFireworks
+from langchain_anthropic import ChatAnthropic
 from langchain_openai import ChatOpenAI
 from langchain_openai import OpenAIEmbeddings
-from langchain_community.document_loaders import DirectoryLoader
 
 from pydantic.v1.utils import deep_update
 
@@ -63,7 +66,7 @@ class VectordbProviders(Enum):
     REDIS = "redis"
     PGVECTOR = "pgvector"
     PINECONE = "pinecone"
-    MONGODB_ATLAS = "mongodb_atlas"
+    MONGODB = "mongodb"
     ELASTICSEARCH = "elasticsearch"
     NEO4J = "neo4j"
 
@@ -83,6 +86,12 @@ class ChatModelProviders(Enum):
     OPENAI = "openai"
     FIREWORKS = "fireworks"
     ANTHROPIC = "anthropic"
+
+
+MONGO_IMPLEMENTATION_CLASSES: dict[str, Any] = {
+    "atlas": MongoDBAtlasVectorSearch,
+    "cosmosdb": AzureCosmosDBVectorSearch,
+}
 
 
 def read_config() -> dict:
@@ -202,10 +211,13 @@ def create_embeddings_function(
     embeddings: Embeddings
     match provider:
         case EmbeddingsProviders.OPENAI:
+            os.environ["OPENAI_API_KEY"] = toml_config["openai"]["api_key"]
             embeddings = OpenAIEmbeddings(
-                model="text-embedding-ada-002",  # Dimensions = 1536
-                api_key=toml_config["openai"]["api_key"],
+                # model="text-embedding-ada-002",  # Dimensions = 1536
+                model="text-embedding-3-small",  # Dimensions = 1536
+                # model="text-embedding-3-large",  # Dimensions = 3072
                 show_progress_bar=show_progress,
+                timeout=toml_config["general"]["llm_request_timeout"],
             )
 
         case EmbeddingsProviders.HUGGINGFACE:
@@ -228,21 +240,33 @@ def create_embeddings_function(
             )
 
         case EmbeddingsProviders.OLLAMA:
-            embeddings = OllamaEmbeddings(  # type: ignore[call-arg]
+            embeddings = OllamaEmbeddings(
                 base_url="http://localhost:11434",
                 # model="mistral",  # VERY resource intensive
                 # model="llama2",  # VERY resource intensive
                 model="orca-mini",  # Dimensions = 3200,
+                show_progress=show_progress,
             )
 
     return embeddings
+
+
+def _fix_chat_model(provider: ChatModelProviders) -> None:
+    """Takes care of specific initialisation and fixing
+
+    Args:
+        provider (ChatModelProviders): One of OPENAI, FIREWORKS, ANTHROPIC
+    """
+    os.environ[f"{provider.value.upper()}_API_KEY"] = toml_config[provider.value][
+        "api_key"
+    ]
 
 
 def _fix_vector_db(provider: VectordbProviders) -> Optional[Any]:
     """Takes care of specific initialisation and fixing
 
     Args:
-        provider (VectordbProviders): One of OPENAI, HUGGINGFACE, INSTRUCTOR, MONGODB_ATLAS,
+        provider (VectordbProviders): One of OPENAI, HUGGINGFACE, INSTRUCTOR, MONGODB,
             ELASTICSEARCH, NEO4J
 
     Returns:
@@ -260,17 +284,12 @@ def _fix_vector_db(provider: VectordbProviders) -> Optional[Any]:
                 conn.execute(sqlalchemy.text("create extension if not exists vector;"))
 
         case VectordbProviders.PINECONE:
-            import pinecone  # type: ignore
+            os.environ["PINECONE_API_KEY"] = toml_config["pinecone"]["api_key"]
 
-            pinecone.init(
-                api_key=toml_config["pinecone"]["api_key"],
-                environment=toml_config["pinecone"]["environment"],
-            )
-
-        case VectordbProviders.MONGODB_ATLAS:
+        case VectordbProviders.MONGODB:
             from pymongo import MongoClient
 
-            ret = MongoClient(toml_config["mongodb_atlas"]["connection_string"])
+            ret = MongoClient(toml_config["mongodb"]["connection_string"])
 
     return ret
 
@@ -284,7 +303,7 @@ def create_vector_db_from_docs(
     """Creates or rebuilds an embeddings vector store, populated with document and embeddings
 
     Args:
-        provider (VectordbProviders): One of OPENAI, HUGGINGFACE, INSTRUCTOR, MONGODB_ATLAS,
+        provider (VectordbProviders): One of OPENAI, HUGGINGFACE, INSTRUCTOR, MONGODB,
             ELASTICSEARCH, NEO4J
         collection_name (str): name given to the document collection
         documents (list[Document]): list of documents to store and embed
@@ -318,26 +337,34 @@ def create_vector_db_from_docs(
                 documents=documents,
                 embedding=embed_function,
                 collection_name=collection_name,
-                connection_string=toml_config["pgvector"]["connection_string"],
+                connection=toml_config["pgvector"]["connection_string"],
+                use_jsonb=True,
             )
 
         case VectordbProviders.PINECONE:
-            vectordb = Pinecone.from_documents(
+            vectordb = PineconeVectorStore.from_documents(
                 documents=documents,
                 embedding=embed_function,
                 index_name=collection_name,
             )
 
-        case VectordbProviders.MONGODB_ATLAS:
+        case VectordbProviders.MONGODB:
             from pymongo import MongoClient  # pylint: disable=import-outside-toplevel
 
-            vectordb = MongoDBAtlasVectorSearch.from_documents(
+            vectordb = MONGO_IMPLEMENTATION_CLASSES[
+                toml_config["mongodb"]["implementation"]
+            ].from_documents(
                 documents=documents,
                 embedding=embed_function,
-                collection=cast(MongoClient, _fix)[
-                    toml_config["mongodb_atlas"]["db_name"]
-                ][collection_name],
+                collection=cast(MongoClient, _fix)[toml_config["mongodb"]["db_name"]][
+                    collection_name
+                ],
             )
+            if (
+                isinstance(vectordb, AzureCosmosDBVectorSearch)
+                and not vectordb.index_exists()
+            ):
+                vectordb.create_index(dimensions=len(embed_function.embed_query("foo")))
 
         case VectordbProviders.ELASTICSEARCH:
             vectordb = ElasticsearchStore.from_documents(
@@ -366,7 +393,7 @@ def open_vector_db_for_querying(
     """Opens an existing embeddings vector store
 
     Args:
-        provider (VectordbProviders): One of OPENAI, HUGGINGFACE, INSTRUCTOR, MONGODB_ATLAS,
+        provider (VectordbProviders): One of OPENAI, HUGGINGFACE, INSTRUCTOR, MONGODB,
             ELASTICSEARCH, NEO4J
         collection_name (str): name of the document collection, same as when it was created
         embed_function (Embeddings): embeddings generator function
@@ -394,26 +421,29 @@ def open_vector_db_for_querying(
 
         case VectordbProviders.PGVECTOR:
             vectordb = PGVector(
-                embedding_function=embed_function,
+                embeddings=embed_function,
                 collection_name=collection_name,
-                connection_string=toml_config["pgvector"]["connection_string"],
+                connection=toml_config["pgvector"]["connection_string"],
+                use_jsonb=True,
             )
 
         case VectordbProviders.PINECONE:
-            vectordb = Pinecone.from_existing_index(
+            vectordb = PineconeVectorStore.from_existing_index(
                 index_name=collection_name,
                 embedding=embed_function,
                 text_key="text",
             )
 
-        case VectordbProviders.MONGODB_ATLAS:
+        case VectordbProviders.MONGODB:
             from pymongo import MongoClient  # pylint: disable=import-outside-toplevel
 
-            vectordb = MongoDBAtlasVectorSearch(
+            vectordb = MONGO_IMPLEMENTATION_CLASSES[
+                toml_config["mongodb"]["implementation"]
+            ](
                 embedding=embed_function,
-                collection=cast(MongoClient, _fix)[
-                    toml_config["mongodb_atlas"]["db_name"]
-                ][collection_name],
+                collection=cast(MongoClient, _fix)[toml_config["mongodb"]["db_name"]][
+                    collection_name
+                ],
             )
 
         case VectordbProviders.ELASTICSEARCH:
@@ -443,28 +473,29 @@ def create_chat_model(provider: ChatModelProviders) -> BaseChatModel:
     Returns:
         BaseChatModel: The chat model
     """
+    _fix_chat_model(provider=provider)
     model: BaseChatModel
     match provider:
         case ChatModelProviders.OPENAI:
             model = ChatOpenAI(
                 model=toml_config["openai"]["chat_model"],
-                api_key=toml_config["openai"]["api_key"],
                 temperature=toml_config["openai"]["temperature"],
+                timeout=toml_config["general"]["llm_request_timeout"],
             )
 
         case ChatModelProviders.FIREWORKS:
-            fireworks_model_params = toml_config["fireworks"]
+            fireworks_model_params = dict(toml_config["fireworks"])
             model = ChatFireworks(
                 model=fireworks_model_params.pop("chat_model"),
-                fireworks_api_key=fireworks_model_params.pop("api_key"),
                 model_kwargs=fireworks_model_params,
+                timeout=toml_config["general"]["llm_request_timeout"],
             )
 
         case ChatModelProviders.ANTHROPIC:
-            model = ChatAnthropic(
+            model = ChatAnthropic(  # type: ignore[call-arg]
                 model_name=toml_config["anthropic"]["chat_model"],
-                anthropic_api_key=toml_config["anthropic"]["api_key"],
                 temperature=toml_config["anthropic"]["temperature"],
+                timeout=toml_config["general"]["llm_request_timeout"],
             )
 
     return model
@@ -610,7 +641,7 @@ if __name__ == "__main__":
 
         create_vector_db_from_docs(
             provider=vectordb_provider,
-            collection_name=toml_config["general"]["collection_name"],
+            collection_name=toml_config["docs"]["collection_name"],
             documents=chunked_documents,
             embed_function=create_embeddings_function(
                 provider=embeddings_provider,
@@ -631,7 +662,7 @@ if __name__ == "__main__":
 
     query_db: VectorStore = open_vector_db_for_querying(
         provider=vectordb_provider,
-        collection_name=toml_config["general"]["collection_name"],
+        collection_name=toml_config["docs"]["collection_name"],
         embed_function=embed_creator,
     )
 

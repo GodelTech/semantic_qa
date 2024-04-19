@@ -1,14 +1,14 @@
 [general]
-# Name given to the embeddings vector collection 
-collection_name = "docs"
 # Used when generating embeddings with a locally downloaded model, e.g. Hugging Face or Instructor
 default_device = "cuda"
-# Choose amongst: "chromadb", "redis", "pgvector", "pinecone", "mongodb_atlas", "elasticsearch", "neo4j"
+# Choose amongst: "chromadb", "redis", "pgvector", "pinecone", "mongodb", "elasticsearch", "neo4j"
 vectordb_provider = "chromadb"
 # Choose amongst: "openai", "huggingface", "instructor", "ollama"
 embeddings_provider = "instructor"
 # Choose amongst: "openai", "fireworks", "anthropic"
 chat_model_provider = "openai"
+# In seconds
+llm_request_timeout = 10
 
 [debug]
 # Force rebuild mode, regardless of command line switches
@@ -23,6 +23,8 @@ corpus_sample_seed = 42
 persist_chunked_docs = false
 
 [docs]
+# Name given to the embeddings vector collection 
+collection_name = "docs"
 # List of directories where source documents live
 source_dirs = ["corpus"]
 # File mask, e.g. "**/[!.]*.*" every (non-hidden) doc with any extension 
@@ -58,7 +60,7 @@ temperature = 0.7
 [anthropic]
 # Don't write it here, put it in non-versioned secrets.toml
 api_key = "API-KEY"
-# Choose from the ones available at https://docs.anthropic.com/claude/reference/selecting-a-model
+# Choose from the ones available at https://docs.anthropic.com/claude/docs/models-overview
 chat_model = "claude-2.1"
 # Between 0 and 1, governs the randomness (and thus the creativity) of the responses
 temperature = 0.7
@@ -102,12 +104,12 @@ connection_string = "postgresql+psycopg2://vector_user:vector_pass@localhost:543
 [pinecone]
 # Don't write it here, put it in non-versioned secrets.toml
 api_key = "API_KEY"
-# Environment name from pinecone.io
-environment = "ENVIRONMENT"
 
-[mongodb_atlas]
+[mongodb]
 # Don't write it here, put it in non-versioned secrets.toml
 connection_string = "mongodb+srv://username:password@cluster.xxxxxxx.mongodb.net/?retryWrites=true&w=majority"
+# Can be either "atlas" or "cosmosdb"
+implementation = "atlas"
 # DB name
 db_name = "vectors"
 

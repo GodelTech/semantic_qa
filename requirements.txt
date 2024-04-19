@@ -2,6 +2,12 @@ tomli
 langchain>=0.1.0
 openai
 langchain_openai
+langchain_anthropic
+langchain_fireworks
+langchain_mongodb
+langchain_pinecone
+langchain-postgres
+langchain-elasticsearch
 tiktoken
 unstructured[all-docs]
 tqdm
@@ -10,10 +16,12 @@ InstructorEmbedding
 chromadb
 pinecone-client
 redis
+neo4j
 pgvector
-psycopg2-binary
+psycopg-binary
 pymongo
 elasticsearch
-chainlit
+chainlit>=1.0.0
 fireworks-ai
 anthropic
+loguru
