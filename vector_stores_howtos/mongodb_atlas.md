@@ -16,19 +16,17 @@
     mongodb+srv://username:password@cluster.xxxxxxx.mongodb.net/?retryWrites=true&w=majority
     ```
 
-1. Create a new "Search" index, using the JSON editor, for the database and collection you created earlier, and the following JSON content (replace XXX with the dimension number of your embeddings model):
+1. Create a new "Atlas Vector Search" index using the JSON editor, for the database and collection you created earlier, named "default", and the following JSON content (replace XXX with the dimension number of your embeddings model):
 
     ```
     {
-      "mappings": {
-        "dynamic": true,
-        "fields": {
-          "embedding": {
-            "dimensions": XXX,
-            "similarity": "cosine",
-            "type": "knnVector"
-          }
+      "fields": [
+        {
+          "type": "vector",
+          "path": "embedding",
+          "numDimensions": XXX,
+          "similarity": "cosine"
         }
-      }
+      ]
     }
     ```

@@ -13,5 +13,5 @@
       -e "http.cors.allow-origin=/.*/"                      \
       -e "discovery.type=single-node"                       \
       -e "ELASTIC_PASSWORD=my_secret_pwd"                   \
-      --restart=unless-stopped elasticsearch:8.10.2
+      --restart=unless-stopped elasticsearch:8.12.2
     ```
