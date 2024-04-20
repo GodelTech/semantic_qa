@@ -34,7 +34,7 @@ async def chat_start() -> None:
 
     query_db = open_vector_db_for_querying(
         provider=VectordbProviders(toml_config["general"]["vectordb_provider"]),
-        collection_name=toml_config["general"]["collection_name"],
+        collection_name=toml_config["docs"]["collection_name"],
         embed_function=create_embeddings_function(
             provider=EmbeddingsProviders(toml_config["general"]["embeddings_provider"]),
             show_progress=False,
@@ -65,7 +65,8 @@ async def message_received(rcvd_message: Message) -> None:
 
 
 class InterceptHandler(logging.Handler):
-    '''Class to intercept all logging with Loguru'''
+    """Class to intercept all logging with Loguru"""
+
     def emit(self, record: logging.LogRecord) -> None:
         # Get corresponding Loguru level if it exists.
         level: str | int
