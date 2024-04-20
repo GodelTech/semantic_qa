@@ -86,6 +86,7 @@ class ChatModelProviders(Enum):
     OPENAI = "openai"
     FIREWORKS = "fireworks"
     ANTHROPIC = "anthropic"
+    LMSTUDIO = "lmstudio"
 
 
 MONGO_IMPLEMENTATION_CLASSES: dict[str, Any] = {
@@ -255,11 +256,16 @@ def _fix_chat_model(provider: ChatModelProviders) -> None:
     """Takes care of specific initialisation and fixing
 
     Args:
-        provider (ChatModelProviders): One of OPENAI, FIREWORKS, ANTHROPIC
+        provider (ChatModelProviders): One of OPENAI, FIREWORKS, ANTHROPIC, LMSTUDIO
     """
-    os.environ[f"{provider.value.upper()}_API_KEY"] = toml_config[provider.value][
-        "api_key"
-    ]
+    if provider in [
+        ChatModelProviders.OPENAI,
+        ChatModelProviders.FIREWORKS,
+        ChatModelProviders.ANTHROPIC,
+    ]:
+        os.environ[f"{provider.value.upper()}_API_KEY"] = toml_config[provider.value][
+            "api_key"
+        ]
 
 
 def _fix_vector_db(provider: VectordbProviders) -> Optional[Any]:
@@ -468,7 +474,7 @@ def create_chat_model(provider: ChatModelProviders) -> BaseChatModel:
     """Creates the chat model to elaborate the response based on the search results
 
     Args:
-        provider (ChatModelProviders): One of OPENAI, FIREWORKS, ANTHROPIC
+        provider (ChatModelProviders): One of OPENAI, FIREWORKS, ANTHROPIC, LMSTUDIO
 
     Returns:
         BaseChatModel: The chat model
@@ -498,6 +504,14 @@ def create_chat_model(provider: ChatModelProviders) -> BaseChatModel:
                 timeout=toml_config["general"]["llm_request_timeout"],
             )
 
+        case ChatModelProviders.LMSTUDIO:
+            model = ChatOpenAI(
+                base_url=toml_config["lmstudio"]["base_url"],
+                api_key=toml_config["lmstudio"]["api_key"],
+                model=toml_config["lmstudio"]["chat_model"],
+                temperature=toml_config["lmstudio"]["temperature"],
+                timeout=toml_config["general"]["llm_request_timeout"],
+            )
     return model
 
 

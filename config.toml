@@ -5,7 +5,7 @@ default_device = "cuda"
 vectordb_provider = "chromadb"
 # Choose amongst: "openai", "huggingface", "instructor", "ollama"
 embeddings_provider = "instructor"
-# Choose amongst: "openai", "fireworks", "anthropic"
+# Choose amongst: "openai", "fireworks", "anthropic", "lmstudio"
 chat_model_provider = "openai"
 # In seconds
 llm_request_timeout = 10
@@ -76,6 +76,16 @@ temperature = 0.7
 top_p = 0.9
 # maximum number of tokens in the response
 max_tokens = 1024
+
+[lmstudio]
+# LM Studio mimics the API exposed by OpenAI, and this is the base URL for requests 
+base_url = "http://localhost:1234/v1/"
+# This is the pretend key LM Studio recommend
+api_key = "lm-studio"
+# From the ones listed at http://localhost:1234/v1/models
+chat_model = "TheBloke/phi-2-GGUF/phi-2.Q4_K_S.gguf"
+# Between 0 and 1, governs the randomness (and thus the creativity) of the responses
+temperature = 0.7
 
 [chat]
 # Prompt template fed to the LLM chat model
