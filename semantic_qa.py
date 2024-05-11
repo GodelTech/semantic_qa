@@ -21,25 +21,26 @@ from langchain.text_splitter import (
 )
 
 from langchain.embeddings.base import Embeddings
-from langchain.embeddings.huggingface import (
-    HuggingFaceEmbeddings,
-    HuggingFaceInstructEmbeddings,
-)
-from langchain.embeddings.ollama import OllamaEmbeddings
-
 from langchain.vectorstores.base import VectorStore
-from langchain.vectorstores.chroma import Chroma
-from langchain.vectorstores.redis import Redis
-
-from langchain.vectorstores.neo4j_vector import Neo4jVector
-from langchain.vectorstores.azure_cosmos_db import AzureCosmosDBVectorSearch
-
-from langchain.chat_models.base import BaseChatModel
-
+from langchain.base_language import BaseLanguageModel
 from langchain.prompts import PromptTemplate
 from langchain.chains.question_answering import load_qa_chain
 from langchain.chains.retrieval_qa.base import RetrievalQA
 
+from langchain_community.embeddings.huggingface import (
+    HuggingFaceEmbeddings,
+    HuggingFaceInstructEmbeddings,
+)
+from langchain_community.embeddings.ollama import OllamaEmbeddings
+from langchain_community.vectorstores.utils import DistanceStrategy
+from langchain_community.vectorstores.chroma import Chroma
+from langchain_community.vectorstores.redis import Redis
+from langchain_community.vectorstores.myscale import MyScale, MyScaleSettings
+from langchain_community.vectorstores.faiss import FAISS
+from langchain_community.vectorstores.milvus import Milvus
+from langchain_community.vectorstores.neo4j_vector import Neo4jVector
+from langchain_community.vectorstores.azure_cosmos_db import AzureCosmosDBVectorSearch
+from langchain_community.llms.replicate import Replicate
 from langchain_community.document_loaders.directory import DirectoryLoader
 
 from langchain_postgres import PGVector
@@ -69,6 +70,9 @@ class VectordbProviders(Enum):
     MONGODB = "mongodb"
     ELASTICSEARCH = "elasticsearch"
     NEO4J = "neo4j"
+    MYSCALE = "myscale"
+    FAISS = "faiss"
+    MILVUS = "milvus"
 
 
 class EmbeddingsProviders(Enum):
@@ -87,6 +91,7 @@ class ChatModelProviders(Enum):
     FIREWORKS = "fireworks"
     ANTHROPIC = "anthropic"
     LMSTUDIO = "lmstudio"
+    REPLICATE = "replicate"
 
 
 MONGO_IMPLEMENTATION_CLASSES: dict[str, Any] = {
@@ -243,9 +248,11 @@ def create_embeddings_function(
         case EmbeddingsProviders.OLLAMA:
             embeddings = OllamaEmbeddings(
                 base_url="http://localhost:11434",
-                # model="mistral",  # VERY resource intensive
-                # model="llama2",  # VERY resource intensive
-                model="orca-mini",  # Dimensions = 3200,
+                # model="mistral",  # Dimensions = 4096
+                # model="llama2",  # Dimensions = 4096
+                # model="orca-mini",  # Dimensions = 3200
+                # model="phi3",  # Dimensions = 3072
+                model="llama3",  # Dimensions = 4096
                 show_progress=show_progress,
             )
 
@@ -256,7 +263,7 @@ def _fix_chat_model(provider: ChatModelProviders) -> None:
     """Takes care of specific initialisation and fixing
 
     Args:
-        provider (ChatModelProviders): One of OPENAI, FIREWORKS, ANTHROPIC, LMSTUDIO
+        provider (ChatModelProviders): One of OPENAI, FIREWORKS, ANTHROPIC, LMSTUDIO, REPLICATE
     """
     if provider in [
         ChatModelProviders.OPENAI,
@@ -266,6 +273,12 @@ def _fix_chat_model(provider: ChatModelProviders) -> None:
         os.environ[f"{provider.value.upper()}_API_KEY"] = toml_config[provider.value][
             "api_key"
         ]
+    if provider in [
+        ChatModelProviders.REPLICATE,
+    ]:
+        os.environ[f"{provider.value.upper()}_API_TOKEN"] = toml_config[provider.value][
+            "api_key"
+        ]
 
 
 def _fix_vector_db(provider: VectordbProviders) -> Optional[Any]:
@@ -273,7 +286,7 @@ def _fix_vector_db(provider: VectordbProviders) -> Optional[Any]:
 
     Args:
         provider (VectordbProviders): One of OPENAI, HUGGINGFACE, INSTRUCTOR, MONGODB,
-            ELASTICSEARCH, NEO4J
+            ELASTICSEARCH, NEO4J, MYSCALE, FAISS, MILVUS
 
     Returns:
         Optional[Any]: in most cases None, but MongoDBAtlasVectorSearch needs a MongoClient
@@ -310,7 +323,7 @@ def create_vector_db_from_docs(
 
     Args:
         provider (VectordbProviders): One of OPENAI, HUGGINGFACE, INSTRUCTOR, MONGODB,
-            ELASTICSEARCH, NEO4J
+            ELASTICSEARCH, NEO4J, MYSCALE, FAISS, MILVUS
         collection_name (str): name given to the document collection
         documents (list[Document]): list of documents to store and embed
         embed_function (Embeddings): embeddings generator function
@@ -390,6 +403,45 @@ def create_vector_db_from_docs(
                 password=toml_config["neo4j"]["password"],
             )
 
+        case VectordbProviders.MYSCALE:
+            vectordb = MyScale.from_documents(
+                documents=documents,
+                embedding=embed_function,
+                config=MyScaleSettings(
+                    host=toml_config["myscale"]["host"],
+                    port=toml_config["myscale"]["port"],
+                    username=toml_config["myscale"]["username"],
+                    password=toml_config["myscale"]["password"],
+                ),
+            )
+
+        case VectordbProviders.FAISS:
+            vectordb = FAISS.from_documents(
+                documents=documents,
+                embedding=embed_function,
+                distance_strategy=DistanceStrategy.COSINE,
+            )
+            vectordb.save_local(
+                folder_path=toml_config["faiss"]["persistence_root_dir"],
+                index_name=collection_name,
+            )
+
+        case VectordbProviders.MILVUS:
+            vectordb = Milvus.from_documents(
+                documents=documents,
+                embedding=embed_function,
+                collection_name=collection_name,
+                index_params={
+                    "metric_type": DistanceStrategy.COSINE.value,
+                    "index_type": toml_config["milvus"]["index_type"],
+                },
+                connection_args={
+                    "uri": toml_config["milvus"]["uri"],
+                    "user": toml_config["milvus"]["user"],
+                    "password": toml_config["milvus"]["password"],
+                },
+            )
+
     return vectordb
 
 
@@ -400,7 +452,7 @@ def open_vector_db_for_querying(
 
     Args:
         provider (VectordbProviders): One of OPENAI, HUGGINGFACE, INSTRUCTOR, MONGODB,
-            ELASTICSEARCH, NEO4J
+            ELASTICSEARCH, NEO4J, MYSCALE, FAISS, MILVUS
         collection_name (str): name of the document collection, same as when it was created
         embed_function (Embeddings): embeddings generator function
 
@@ -467,20 +519,55 @@ def open_vector_db_for_querying(
                 password=toml_config["neo4j"]["password"],
             )
 
+        case VectordbProviders.MYSCALE:
+            vectordb = MyScale(
+                embedding=embed_function,
+                config=MyScaleSettings(
+                    host=toml_config["myscale"]["host"],
+                    port=toml_config["myscale"]["port"],
+                    username=toml_config["myscale"]["username"],
+                    password=toml_config["myscale"]["password"],
+                ),
+            )
+
+        case VectordbProviders.FAISS:
+            vectordb = FAISS.load_local(
+                embeddings=embed_function,
+                folder_path=toml_config["faiss"]["persistence_root_dir"],
+                index_name=collection_name,
+                allow_dangerous_deserialization=True,
+                distance_strategy=DistanceStrategy.COSINE,
+            )
+
+        case VectordbProviders.MILVUS:
+            vectordb = Milvus(
+                embedding_function=embed_function,
+                collection_name=collection_name,
+                index_params={
+                    "metric_type": DistanceStrategy.COSINE.value,
+                    "index_type": toml_config["milvus"]["index_type"],
+                },
+                connection_args={
+                    "uri": toml_config["milvus"]["uri"],
+                    "user": toml_config["milvus"]["user"],
+                    "password": toml_config["milvus"]["password"],
+                },
+            )
+
     return vectordb
 
 
-def create_chat_model(provider: ChatModelProviders) -> BaseChatModel:
+def create_chat_model(provider: ChatModelProviders) -> BaseLanguageModel:
     """Creates the chat model to elaborate the response based on the search results
 
     Args:
-        provider (ChatModelProviders): One of OPENAI, FIREWORKS, ANTHROPIC, LMSTUDIO
+        provider (ChatModelProviders): One of OPENAI, FIREWORKS, ANTHROPIC, LMSTUDIO, REPLICATE
 
     Returns:
         BaseChatModel: The chat model
     """
     _fix_chat_model(provider=provider)
-    model: BaseChatModel
+    model: BaseLanguageModel
     match provider:
         case ChatModelProviders.OPENAI:
             model = ChatOpenAI(
@@ -490,10 +577,10 @@ def create_chat_model(provider: ChatModelProviders) -> BaseChatModel:
             )
 
         case ChatModelProviders.FIREWORKS:
-            fireworks_model_params = dict(toml_config["fireworks"])
             model = ChatFireworks(
-                model=fireworks_model_params.pop("chat_model"),
-                model_kwargs=fireworks_model_params,
+                model=toml_config["fireworks"]["chat_model"],
+                temperature=toml_config["fireworks"]["temperature"],
+                max_tokens=toml_config["fireworks"]["max_tokens"],
                 timeout=toml_config["general"]["llm_request_timeout"],
             )
 
@@ -512,6 +599,15 @@ def create_chat_model(provider: ChatModelProviders) -> BaseChatModel:
                 temperature=toml_config["lmstudio"]["temperature"],
                 timeout=toml_config["general"]["llm_request_timeout"],
             )
+
+        case ChatModelProviders.REPLICATE:
+            replicate_model_kwargs = dict(toml_config["replicate"])
+            _ = replicate_model_kwargs.pop("api_key")
+            model = Replicate(
+                model=replicate_model_kwargs.pop("chat_model"),
+                input=replicate_model_kwargs,
+            )
+
     return model
 
 
@@ -528,11 +624,14 @@ def output_relevant_docs(
     Returns:
         list[tuple[Document, float]]: list of matches of the form [matching_doc, matching_score]
     """
-    return vector_db.similarity_search_with_score(query_str, k=k)
+    try:
+        return vector_db.similarity_search_with_score(query_str, k=k)
+    except NotImplementedError:
+        return vector_db.similarity_search_with_relevance_scores(query_str, k=k)
 
 
 def run_qa_chain(
-    llm: BaseChatModel, vector_db: VectorStore, query_str: str, k: int
+    llm: BaseLanguageModel, vector_db: VectorStore, query_str: str, k: int
 ) -> Any:
     """Runs a basic QA chain using lanchain and openai, with a default prompt
 
@@ -562,7 +661,7 @@ def run_qa_chain(
 
 
 def run_custom_retrieval_chain(
-    llm: BaseChatModel, vector_db: VectorStore, query_str: str
+    llm: BaseLanguageModel, vector_db: VectorStore, query_str: str
 ) -> Any:
     """Runs a custom QA chain using lanchain and openai, allowing us to tweak parameters
 
@@ -693,6 +792,7 @@ if __name__ == "__main__":
         compact=True,
         width=os.get_terminal_size().columns,
     )
+    print(f"Dimensions of embeddings: {len(embeddings_english)}")
     print("-" * 70)
 
     # Show the semantic similarity between the sentences,

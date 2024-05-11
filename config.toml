@@ -1,11 +1,11 @@
 [general]
 # Used when generating embeddings with a locally downloaded model, e.g. Hugging Face or Instructor
 default_device = "cuda"
-# Choose amongst: "chromadb", "redis", "pgvector", "pinecone", "mongodb", "elasticsearch", "neo4j"
+# Choose amongst: "chromadb", "redis", "pgvector", "pinecone", "mongodb", "elasticsearch", "neo4j", "myscale", "faiss", "milvus"
 vectordb_provider = "chromadb"
 # Choose amongst: "openai", "huggingface", "instructor", "ollama"
 embeddings_provider = "instructor"
-# Choose amongst: "openai", "fireworks", "anthropic", "lmstudio"
+# Choose amongst: "openai", "fireworks", "anthropic", "lmstudio", "replicate"
 chat_model_provider = "openai"
 # In seconds
 llm_request_timeout = 10
@@ -87,6 +87,16 @@ chat_model = "TheBloke/phi-2-GGUF/phi-2.Q4_K_S.gguf"
 # Between 0 and 1, governs the randomness (and thus the creativity) of the responses
 temperature = 0.7
 
+[replicate]
+# Don't write it here, put it in non-versioned secrets.toml
+api_key = "API-KEY"
+# Choose from the ones available at https://replicate.com/explore
+chat_model = "meta/llama-2-7b-chat"
+# Between 0 and 1, governs the randomness (and thus the creativity) of the responses
+temperature = 0.7
+# maximum number of tokens in the response
+max_new_tokens = 1024
+
 [chat]
 # Prompt template fed to the LLM chat model
 prompt_template = """You are an AI assistant that answers questions about our company's policy. 
@@ -134,3 +144,29 @@ url = "neo4j://localhost:7687"
 username = "USERNAME"
 # Don't write it here, put it in non-versioned secrets.toml
 password = "PASSWORD"
+
+[myscale]
+# Don't write it here, put it in non-versioned secrets.toml
+host = 'host.myscale.com'
+# Don't write it here, put it in non-versioned secrets.toml
+port = 443
+# Don't write it here, put it in non-versioned secrets.toml
+username = "USERNAME"
+# Don't write it here, put it in non-versioned secrets.toml
+password = "PASSWORD"
+
+[faiss]
+# Root directory to persist the FAISS index
+persistence_root_dir = "faiss"
+
+[milvus]
+# URI of the cloud-based Milvus cluster
+uri = "https://xxxxxxxxxxxxx.zillizcloud.com"
+# Don't write it here, put it in non-versioned secrets.toml
+user = "USERNAME"
+# Don't write it here, put it in non-versioned secrets.toml
+password = "PASSWORD"
+# Don't write it here, put it in non-versioned secrets.toml
+token = "abcdefghijklmnopqrstuvwxyz0123456789abcdefghijklmnopqrstuvwxyz0123456789"
+# AUTOINDEX for the Zilliz cloud, HNSW or FLAT anywhere else is probably a good choice
+index_type = "AUTOINDEX"

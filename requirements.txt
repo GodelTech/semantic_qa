@@ -21,6 +21,9 @@ pgvector
 psycopg-binary
 pymongo
 elasticsearch
+clickhouse-connect
+faiss-cpu
+pymilvus
 chainlit>=1.0.0
 fireworks-ai
 anthropic
